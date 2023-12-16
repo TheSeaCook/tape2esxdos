@@ -1,3 +1,9 @@
-Basic tape to esxdos transfer, compile at 0x8000, buffer at 0xB000.
+## ZX Spectrum Bulk Data Transfer
 
-TODO: Makefile, BASIC loader and dot command
+A set of tools for transferring arbitrary files (of arbitrary lengh, up to 1Gb)
+to ZX Spectrum machine via tape input (MIC). No additional hardware required.
+
+Code can be built in two flavours: regular and esxdos dot command.
+
+Source file should be processed by the split.py script and uploaded in
+a normal way.
