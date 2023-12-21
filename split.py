@@ -7,13 +7,15 @@ import re
 from struct import pack, unpack
 from sys import argv
 
-# not sure what's at the top, full 16K may not fit
-BLOCK_SIZE=16384
+MAX_BLOCK_SIZE=16384
+
+BTX_OPEN_ID=0x87
+BTX_CHUNK_ID=0x88
 
 #read file in BLOCK_SIZE chunks, write to TAP with
 #  ID 0x88, vars -- total number of chunks, hdadd -- current chunk number
 
-def split(name, block_size=(BLOCK_SIZE/2), pause=0, split=False):
+def split(name, delay=False, block_size=(MAX_BLOCK_SIZE/2), pause=0, split=False):
   if not exists(name):
     print("Not a file, skipping:", name)
     return
@@ -39,12 +41,12 @@ def split(name, block_size=(BLOCK_SIZE/2), pause=0, split=False):
       with open(name+'.xchtap', 'wb') as tap:
         data = f.read(block_size)
         while data:
-          packchunk(tap, dosname, ordinal, nchunks, data)
+          packchunk(tap, dosname, ordinal, nchunks, data, delay)
           if pause > 0:
             tape_data(tap, bytearray([0x55] * pause * 256))
           ordinal += 1
           data = f.read(block_size)
-    print('Done with', name)
+    print('Done with', name, '          ')
 
 def mkdosname(fname):
   # dos name is 8+3, but we only have 10 chars
@@ -65,22 +67,29 @@ def chksum(*args):
     for b in data: chksum ^= b
   return chksum
 
-def packchunk(t, dosname, ordinal, total, data):
-    hdr = bytearray(19) # hdr[0] = 0, flag byte 00 (header)
-    hdr[1] = 0x88 # type id
-    hdr[2:12] = pack('<10s', dosname.ljust(10).encode('ASCII')) # name FIXME
-    hdr[12:14] = pack('<H', len(data)) # data length
-    hdr[14:16] = pack('<H', ordinal) # param1 - this block ordinal
-    hdr[16:18] = pack('<H', total) # param2 - total # of blocks
-    hdr[18] = chksum(hdr)
+def packchunk(t, dosname, ordinal, total, data, delay=False):
+    name = dosname.ljust(10).encode('ASCII')
+    # do we need OPEN_FILE chunk?
+    if 1 == ordinal and delay:
+      tape_header(t, BTX_OPEN_ID, name, len(data), ordinal, total)
+      tape_data(t, bytearray([0x77]))
     # header
-    t.write(pack('<H', len(hdr)))
-    t.write(hdr)
+    tape_header(t, BTX_CHUNK_ID, name, len(data), ordinal, total)
     # data
     tape_data(t, data)
     print('Written fragment', ordinal, "size", len(data),'\r',end='')
-    # TODO: real hardware needs time to write the chunk
-    # we need to add a "placeholder" with dummy data after each data chunk
+
+def tape_header(t, type_id, name, size, ordinal, total):
+  hdr = bytearray(19)
+  # hdr[0] = 0, flag byte 00 (header)
+  hdr[1] = type_id
+  hdr[2:12] = pack('<10s', name)
+  hdr[12:14] = pack('<H', size)
+  hdr[14:16] = pack('<H', ordinal) # param1 - this block ordinal
+  hdr[16:18] = pack('<H', total) # param2 - total # of blocks
+  hdr[18] = chksum(hdr) # note that [18] must be 0!!!
+  t.write(pack('<H', len(hdr)))
+  t.write(hdr)
 
 def tape_data(t, data):
   t.write(pack('<H', len(data)+2))
@@ -92,12 +101,16 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('files', nargs='+')
   parser.add_argument('-b', '--block-size', type=int, default=8192)
-  parser.add_argument('-s', '--split', action='store_true')
-  parser.add_argument('-p', '--pause', type=int, default=0, help='interval pause duration')
+  parser.add_argument('-s', '--split', action='store_true',
+      help='store each chunk in a separate file')
+  parser.add_argument('-p', '--pause', type=int, default=0,
+      help='interval pause duration x 256b')
+  parser.add_argument('-d', '--delay', action='store_true',
+      help='delay before first data chunk')
   args = parser.parse_args()
-  if args.block_size > BLOCK_SIZE:
-    raise TypeError('Block size cannot be larger than {}'.format(BLOCK_SIZE))
+  if args.block_size > MAX_BLOCK_SIZE:
+    raise TypeError('Block size cannot be larger than {}'.format(MAX_BLOCK_SIZE))
   for name in args.files:
-    split(name, args.block_size, args.pause, args.split)
+    split(name, args.delay, args.block_size, args.pause, args.split)
 
 # EOF vim: ts=2:sw=2:et:ai:
