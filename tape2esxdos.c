@@ -1,5 +1,3 @@
-// Copyright 2023 TIsland Crew
-// SPDX-License-Identifier: Apache-2.0
 #include <arch/zx.h>
 #include <arch/zx/esxdos.h>
 #include <errno.h>
@@ -26,8 +24,12 @@
  * zcc +zx -v -SO3 -startup=30 -clib=sdcc_iy --max-allocs-per-node200000 --opt-code-size s.c && z88dk-appmake +zx -b a_CODE.bin --org 0x8000 -o a.tap
  */
 
+#define BTX_ID_MASK 0xF0u
+#define BTX_ID_TYPE 0x80u
+#define BTX_OPEN_ID 0x87u
+#define BTX_CHUNK_ID 0x88u
+
 #define BUFFER_SIZE 16384
-#define BULK_ID 0x88
 #define RAM_ADDRESS 0xB000
 
 #define buffer ((void *)RAM_ADDRESS)
@@ -85,7 +87,7 @@ void load_header(unsigned int expected) {
 #endif // __ESXDOS_DOT_COMMAND
         if (break_pressed()) exit(1);
         if (rc) continue;
-        if (BULK_ID == hdr.hdtype) {
+        if (BTX_ID_TYPE == (BTX_ID_MASK & hdr.hdtype)) {
             if(hdr.hdlen > BUFFER_SIZE) {
                 printf("\nChunk too big %u (max %u)\n", hdr.hdlen, BUFFER_SIZE);
                 exit(1);
@@ -117,7 +119,7 @@ unsigned char copy_chunk() {
         // TODO: check write errors
         putchar(' ');
     } else {
-        printf("E\x08");
+        printf("E");
     }
     return rc;
 }
@@ -148,7 +150,7 @@ unsigned int main() {
     z80_bpoke(23692, 255); // disable "scroll ?" prompts
     //               1            2         3
     //      1234567890123456789   0123456789012
-    printf("t2esx v1.1 BulkTX \x7f 2023 TIsland\n");
+    printf("t2esx v1.2 BulkTX \x7f 2023 TIsland\n");
 
 #ifdef __ESXDOS_DOT_COMMAND
     if (z80_wpeek(23730) >= (unsigned int)RAM_ADDRESS) {
@@ -174,6 +176,11 @@ unsigned int main() {
             : ESX_MODE_WRITE|ESXDOS_MODE_CREAT_NOEXIST);
     if (0xff != file) {
         atexit(cleanup);
+        // was that a special OPEN file chunk?
+        if (BTX_OPEN_ID == hdr.hdtype) {
+            // skip everything until the first data chunk
+            load_header(1);
+        }
         while(1) {
             printf("%uL\x08", blockno);
             if (0 == copy_chunk()) {
