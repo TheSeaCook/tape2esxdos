@@ -1,3 +1,5 @@
+// Copyright 2023 TIsland Crew
+// SPDX-License-Identifier: Apache-2.0
 #include <arch/zx.h>
 #include <arch/zx/esxdos.h>
 #include <errno.h>

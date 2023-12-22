@@ -1,7 +1,8 @@
 ## ZX Spectrum Bulk Data Transfer
 
-A set of tools for transferring arbitrary files (of arbitrary lengh, up to 1Gb)
-to ZX Spectrum machine via tape input (MIC). No additional hardware required.
+A set of tools for transferring arbitrary files (of arbitrary lengh, up
+to 1Gb) to ZX Spectrum machine via tape input (EAR). No additional
+hardware required.
 
 t2esx utility is intended to transfer data to the ZX Spectrum via the
 MIC port without any additional hardware. If you have the means to play
@@ -21,18 +22,26 @@ Speccy. Of course, dot command has to be copied to the target Speccy
 first.
 
 Utility uses non-standard tape block identifiers, so data for transfer
-must be prepared with the `split.py` script. split.py normally produces a
-single TAP with 8K data chunks (see `--block_size` argument). The maximum
-chunk size is 16K, apparently smaller number of chunks reduces the time
-required to transmit data headers and meta information. `split.py` can
-insert placeholder blocks between data chunks, this is required if
-Speccy’s storage device is unable to quickly save the chunk (see `--pause`
-command line argument). If your audio equipment is not reliable, “split”
-mode can be enabled with the `--split` command line argument. Is this case
-split.py creates a separate TAP file for each data chunk, simplifying
-retries. So far in our limited testing there was no need to use it, you
-can simply loop the data TAP file and eventually t2esx will load all the
-chunks.
+must be prepared with the `split.py` script. split.py normally produces
+a single TAP with 8K (when transferring less than 48k) or 16k data
+chunks (see `--block_size` argument).  The maximum chunk size is 16K,
+apparently bigger chunks reduces the time required to transmit data
+headers and meta information.
+
+`split.py` can insert placeholder blocks between data chunks, this is
+required if Speccy’s storage device is unable to quickly save the chunk
+(see `--pause` command line argument).
+
+If your audio equipment is not reliable, “split” mode can be enabled
+with the `--split` command line argument. Is this case split.py creates
+a separate TAP file for each data chunk, simplifying retries. So far in
+our limited testing there was no need to use it, you can simply loop the
+data TAP file and eventually t2esx will load all the chunks.
+
+Additional options generally required only if you want to use higher
+than normal transfer speed (e.g. on Next running at 28MHz it is possible
+to use 8x playback speed, but you may need --pause 2 or longer,
+depending on your SD card write performance).
 
 t2esx utility display the following status indicators (`N` means chunk
 number):
@@ -40,15 +49,14 @@ number):
 - `?` – waiting for a header
 - `NL` – loading data chunk number N
 - `NS` – saving data chunk number N
-- `NE` – appears briefly, before `?` indicator is shown, means there was
-  an error while loading chunk N
+- `NE` – means there was an error while loading chunk N
 - `!` – unexpected chunk number detected, code will keep loading headers
   looking for the right chunk
 
 “regular” build has no input arguments and never overwrites target file
 if it already exists. Dot command does not overwrite files by default
 and it accepts “`-f`” command line argument, which allows it to
-unconditionally save target file, overwriting any existing data.  RAMTOP
+unconditionally save target file, overwriting any existing data. RAMTOP
 has to be manually adjusted before launching the dot command (using
 regular `CLEAR NNNNN`), maximum suggested value reported by the utility
 (`45055` at the moment).
