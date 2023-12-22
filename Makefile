@@ -34,4 +34,10 @@ t2esx_CODE.bin.zx0: t2esx_CODE.bin
 clean:
 	rm -f t2esx.tap t2esx-zx0.tap code-zx0.tap code.tap code-zx0.bin t2esx_CODE.bin t2esx_CODE.bin.zx0
 
+dist: t2esx-zx0.tap t2esx
+	mkdir -p dist
+	@rm -f dist/t2esx.zip
+	zip -r9 dist/t2esx.zip README.md t2esx t2esx-zx0.tap split.py
+	printf '@ t2esx-zx0.tap\n@=t2esx.tap\n' | zipnote -w dist/t2esx.zip
+
 # EOF vim: ts=4:sw=4:noet:ai:
