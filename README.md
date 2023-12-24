@@ -21,6 +21,8 @@ concatenates the t2esx TAP file with the data file and send it to
 Speccy. Of course, dot command has to be copied to the target Speccy
 first.
 
+### Preparing data file
+
 Utility uses non-standard tape block identifiers, so data for transfer
 must be prepared with the `split.py` script. split.py normally produces
 a single TAP with 8K (when transferring less than 48k) or 16k data
@@ -43,6 +45,8 @@ than normal transfer speed (e.g. on Next running at 28MHz it is possible
 to use 8x playback speed, but you may need --pause 2 or longer,
 depending on your SD card write performance).
 
+### t2esx output
+
 t2esx utility display the following status indicators (`N` means chunk
 number):
 
@@ -53,10 +57,86 @@ number):
 - `!` – unexpected chunk number detected, code will keep loading headers
   looking for the right chunk
 
-“regular” build has no input arguments and never overwrites target file
-if it already exists. Dot command does not overwrite files by default
+“Tape” build has no input arguments and never overwrites target file
+if it already exists. Dot command does not overwrite files by default,
 and it accepts “`-f`” command line argument, which allows it to
 unconditionally save target file, overwriting any existing data. RAMTOP
 has to be manually adjusted before launching the dot command (using
 regular `CLEAR NNNNN`), maximum suggested value reported by the utility
 (`45055` at the moment).
+
+### Example
+
+![screencast](docs/screencast.gif)
+
+Let's say we want to transfer the t2esx esxdos build to a Speccy:
+
+1. On computer prepare the source file `T2ESX`
+
+```
+$ ./split.py T2ESX
+T2ESX size 3491 chunks: 1
+Output: T2ESX.xchtap
+Done with T2ESX
+```
+
+2. Transfer the TAP version and the data file to the Speccy:
+
+```
+$ cat t2esx.tap T2ESX.xchtap > _.tap
+$ tape2wav -r 44100 _.tap - | pacat -p --format=u8 --channels=1 --rate=44100
+```
+
+And do not forget to do `LOAD ""` on Speccy :)
+
+> *You may want to use `--device` if you have more than one audio sink*
+
+You will see sometyhing like
+```
+t2esx v1.2 BulkTX (C) 2023 TIsland
+'T2ESX' - 1 chunks
+1
+'T2ESX' DONE
+
+[...]
+9 STOP statement, 10:2
+```
+
+3. On the Speccy check newly uploaded `t2esx` dot command:
+
+```
+.ls t2esx
+t2esx                   3491 DD.MM.YYYY
+```
+
+4. If you try uploading the same TAP again you will see
+
+```
+[...]
+Can't open 'T2ESX' 18
+[...]
+```
+
+Tape version does not overwrite the target file, you need to move/delete
+it first. Dot command has `-f` command line argument enabling
+unconditional overwrites. This is how you may want to replace t2esx in
+the `/BIN` directory (assuming you you already have the previous version
+there):
+
+```
+.cd /bin
+.t2esx -f
+```
+
+And on your host just play `T2ESX.xchtap`
+
+Dot command may display the following message:
+
+```
+t2esx v1.2 BulkTX (C) 2023 TIsland
+M RAMTOP no good (45055)
+```
+
+It means you need to move `RAMTOP` at least to the address suggsted by
+the `t2esx`, e.g. `CLEAR 45055`. Tape version sets RAMTOP in the BASIC
+loader, but for the dot command it has to be adjusted manually.
