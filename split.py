@@ -38,7 +38,7 @@ def split(name, delay=False, block_size=(MAX_BLOCK_SIZE/2), pause=0, split=False
       while True:
         data = f.read(block_size)
         if data:
-          oname = name+'.xchtap.'+str(ordinal).zfill(3)
+          oname = name+'.xchtap.'+str(ordinal).zfill(4)
           with open(oname, 'wb') as tap:
             packchunk(tap, dosname, ordinal, nchunks, data, delay)
             ordinal += 1
@@ -49,7 +49,7 @@ def split(name, delay=False, block_size=(MAX_BLOCK_SIZE/2), pause=0, split=False
         data = f.read(block_size)
         while data:
           packchunk(tap, dosname, ordinal, nchunks, data, delay)
-          if pause > 0:
+          if pause > 0 and ordinal < nchunks:
             tape_data(tap, bytearray([0x55] * pause * 256))
           ordinal += 1
           data = f.read(block_size)
