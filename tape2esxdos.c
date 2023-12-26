@@ -171,7 +171,7 @@ unsigned int main() {
     get_fname(fname, hdr.hdname);
     blockno = hdr.hdadd;
     total = hdr.hdvars;
-    printf("'%s' - %u chunks\n", fname, total);
+    printf("'%s' - %u chunks\nO\x08", fname, total);
 
     file = esx_f_open(fname, overwrite
             ? ESX_MODE_WRITE|ESX_MODE_OPEN_CREAT_TRUNC
