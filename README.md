@@ -5,7 +5,7 @@ to 1Gb) to ZX Spectrum machine via tape input (EAR). No additional
 hardware required.
 
 t2esx utility is intended to transfer data to the ZX Spectrum via the
-MIC port without any additional hardware. If you have the means to play
+EAR port without any additional hardware. If you have the means to play
 back TAP files, t2esx allows you to transfer any arbitrary amount of raw
 data (theoretical upper limit – 1G). Utility provided in two flavours –
 “regular” 48k programme and the esxdos dot command. There are no other
@@ -27,7 +27,7 @@ Utility uses non-standard tape block identifiers, so data for transfer
 must be prepared with the `split.py` script. split.py normally produces
 a single TAP with 8K (when transferring less than 48k) or 16k data
 chunks (see `--block_size` argument).  The maximum chunk size is 16K,
-apparently bigger chunks reduces the time required to transmit data
+apparently bigger chunks reduce the time required to transmit data
 headers and meta information.
 
 `split.py` can insert placeholder blocks between data chunks, this is
@@ -47,15 +47,36 @@ depending on your SD card write performance).
 
 ### t2esx output
 
-t2esx utility display the following status indicators (`N` means chunk
+t2esx utility displays the following status indicators (`n` means chunk
 number):
 
 - `?` – waiting for a header
-- `NL` – loading data chunk number N
-- `NS` – saving data chunk number N
-- `NE` – means there was an error while loading chunk N
+- `O` - **o**pening file for writing
+- `nL` – **l**oading data chunk number `n`
+- `nS` – **s**aving data chunk number `n`
+- `nE` – means there was an **e**rror while loading chunk `n`
 - `!` – unexpected chunk number detected, code will keep loading headers
   looking for the right chunk
+
+It is recommended to try split parameters on a short test file, two or
+three chunks long.
+
+Troubleshooting:
+
+- slow disk subsystem
+    - `O` still visible when the next HEADER block starts (note: since
+      1.2 a short DATA block follows initial `OPEN_FILE` header). It
+      means opening file takes too long. Let us know your
+      hardware/software detaills (Spectrum model, Div\*\*\* model/make, SD
+      card brand and capacity).  Workaround: just re-start upload,
+      `t2esx` will ignore already processed parts.
+    - `nL` still visible when the next block starts. Writing block takes
+      too long, try reducing chunk size (unlikely to work) or
+      increasing the pause duration
+    - finally, it is possible that **all** disk operations may take very
+      long time. Most likely the filesystem/card is too fragmented.
+      Workaround: use `--split` option and manually start playback for
+      each chunk.
 
 “Tape” build has no input arguments and never overwrites target file
 if it already exists. Dot command does not overwrite files by default,
@@ -71,7 +92,7 @@ regular `CLEAR NNNNN`), maximum suggested value reported by the utility
 
 Let's say we want to transfer the t2esx esxdos build to a Speccy:
 
-1. On computer prepare the source file `T2ESX`
+1. On the host computer prepare source file `T2ESX`
 
 ```
 $ ./split.py T2ESX
