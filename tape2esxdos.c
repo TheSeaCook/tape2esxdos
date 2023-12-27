@@ -152,7 +152,7 @@ unsigned int main() {
     z80_bpoke(23692, 255); // disable "scroll ?" prompts
     //               1            2         3
     //      1234567890123456789   0123456789012
-    printf("t2esx v1.2 BulkTX \x7f 2023 TIsland\n");
+    printf("t2esx v1.C BulkTX \x7f 2023 TIsland\n");
 
 #ifdef __ESXDOS_DOT_COMMAND
     if (z80_wpeek(23730) >= (unsigned int)RAM_ADDRESS) {
