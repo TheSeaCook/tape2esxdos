@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
+from os import get_terminal_size
 from os.path import getsize, exists
 from pathlib import Path
-import re
 from struct import pack, unpack
 from sys import argv
 
@@ -29,10 +29,11 @@ def split(name, delay=False, block_size=(MAX_BLOCK_SIZE/2), pause=0, split=False
     block_size = MAX_BLOCK_SIZE//2 if filesize < 49152 else MAX_BLOCK_SIZE
   nchunks=filesize//block_size
   if (filesize%block_size) > 0: nchunks += 1
-  print(name, "size", filesize, "chunks:", nchunks)
+  dosname = mkdosname(name)
+  print('{} size {}, {} chunk{} "{}"'
+      .format(name, filesize, nchunks, 's' if nchunks > 1 else '', dosname))
   with open(name, 'rb') as f:
     ordinal = 1
-    dosname = mkdosname(name)
     print("Output:", name+'.xchtap')
     if split:
       while True:
@@ -53,20 +54,23 @@ def split(name, delay=False, block_size=(MAX_BLOCK_SIZE/2), pause=0, split=False
             tape_data(tap, bytearray([0x55] * pause * 256))
           ordinal += 1
           data = f.read(block_size)
-    print('Done with', name, '          ')
+    print('Done with {}'.format(name).ljust(get_tty_width()))
+
+def get_tty_width():
+  columns = get_terminal_size().columns
+  if None == columns or columns < 32:
+    columns = 32
+  return columns
 
 def mkdosname(fname):
   # dos name is 8+3, but we only have 10 chars
   p = Path(fname)
   suffix = p.suffix[0:4]
+  stem = p.stem.translate({ord('.'):None})
   if len(suffix) > 0:
-    return re.sub(
-      r"(\.{2,})",
-      '.',
-      (p.stem[0:10-len(suffix)]+suffix)
-    )
+    return stem[0:10-len(suffix)]+suffix
   else:
-    return p.stem[0:8]
+    return stem
 
 def chksum(*args):
   chksum = 0
@@ -84,7 +88,7 @@ def packchunk(t, dosname, ordinal, total, data, delay=False):
     tape_header(t, BTX_CHUNK_ID, name, len(data), ordinal, total)
     # data
     tape_data(t, data)
-    print('Written fragment', ordinal, "size", len(data),'\r',end='')
+    print('Written chunk {} size {}\r'.format(ordinal, len(data))[:get_tty_width()-1], end='')
 
 def tape_header(t, type_id, name, size, ordinal, total):
   hdr = bytearray(19)
