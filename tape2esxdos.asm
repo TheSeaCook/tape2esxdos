@@ -68,15 +68,22 @@ asm_zx_tape_load_block_esxdos:
    ld a,$0f
    out ($fe),a                 ; make border white
 
-;;   ld hl,exit
-;;   push hl
-
-;;   jp 0x0562                   ; rom tape load, trapped by divmmc
+; enable with -Ca-DT2ESX_TURBO
+IF T2ESX_TURBO
+  call LD_BYTES
+else
+if __ESXDOS_DOT_COMMAND
    IN A,($FE)			; code at 0x562, correct entry point
    rst $18
    dw 0x0564
+else
+   ld hl,exit
+   push hl
 
-;;exit:
+   jp 0x0562                   ; rom tape load, trapped by divmmc
+exit:
+endif ; __ESXDOS_DOT_COMMAND
+endif ; T2ESX_TURBO
 
    ex af,af'                   ; carry flag set on success
 
@@ -89,4 +96,9 @@ asm_zx_tape_load_block_esxdos:
 
    jp c, error_znc
    jp error_mc
+
+if T2ESX_TURBO
+#include "turbo-loader.asm"
+endif ; T2ESX_TURBO
+
 ; EOF

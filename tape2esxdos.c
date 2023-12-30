@@ -22,9 +22,15 @@
  * zcc +zx -vn -subtype=dot -startup=30 -clib=new -SO3 --opt-code-size esxdos_asm_zx_tape_load_block.asm s.c -o s -create-app
  *  clib=sdcc_iy doesn't work with ASM code
  * compile for 48/128:
- * TODO:
- * zcc +zx -v -SO3 -startup=30 -clib=sdcc_iy --max-allocs-per-node200000 --opt-code-size s.c && z88dk-appmake +zx -b a_CODE.bin --org 0x8000 -o a.tap
+ * zcc +zx -v -SO3 -startup=30 -clib=new --opt-code-size s.c && z88dk-appmake +zx -b a_CODE.bin --org 0x8000 -o a.tap
  */
+
+// 4 chars only for the version tag
+#ifdef T2ESX_TURBO
+#define VER "t1.C"
+#else
+#define VER "v1.C"
+#endif // T2ESX_TURBO
 
 #define BTX_ID_MASK 0xF0u
 #define BTX_ID_TYPE 0x80u
@@ -48,13 +54,13 @@ static unsigned char overwrite;
 static unsigned char tname[10];
 #endif // COMPARE_CHUNK_NAMES
 
-#ifdef __ESXDOS_DOT_COMMAND
+#if defined(T2ESX_TURBO) || defined(__ESXDOS_DOT_COMMAND)
 extern unsigned char __LIB__ esxdos_zx_tape_load_block(void *dst,unsigned int len,unsigned char type) __smallc;
 extern unsigned char __LIB__ esxdos_zx_tape_load_block_callee(void *dst,unsigned int len,unsigned char type) __smallc __z88dk_callee;
 #define esxdos_zx_tape_load_block(a,b,c) esxdos_zx_tape_load_block_callee(a,b,c)
 #else
 #define esxdos_zx_tape_load_block(a,b,c) zx_tape_load_block(a,b,c)
-#endif // __ESXDOS_DOT_COMMAND
+#endif // __ESXDOS_DOT_COMMAND || T2ESX_TURBO
 
 unsigned char break_pressed(void) {
     unsigned char brk = 0x0;
@@ -71,7 +77,7 @@ void get_fname(unsigned char *fname, unsigned char *hdname) {
 
     memcpy(fname, hdname, 10);
     fname[10] = 0;
-    for (i=9; ' '==fname[i]; i--) {
+    for (i=9; i>0 && ' '==fname[i]; i--) {
         fname[i] = 0;
     }
 }
@@ -85,6 +91,7 @@ void load_header(unsigned int expected) {
         rc = esxdos_zx_tape_load_block(buffer, sizeof(struct zxtapehdr), ZXT_TYPE_HEADER);
         memcpy(&hdr, buffer, sizeof(struct zxtapehdr));
 #else
+        // tape build resides in the uncontended RAM, no need for memcpy
         rc = esxdos_zx_tape_load_block(&hdr, sizeof(hdr), ZXT_TYPE_HEADER);
 #endif // __ESXDOS_DOT_COMMAND
         if (break_pressed()) exit(1);
@@ -151,8 +158,8 @@ unsigned int main() {
 
     z80_bpoke(23692, 255); // disable "scroll ?" prompts
     //               1            2         3
-    //      1234567890123456789   0123456789012
-    printf("t2esx v1.C BulkTX \x7f 2023 TIsland\n");
+    //      123456 7890 123456789   0123456789012
+    printf("t2esx " VER" BulkTX \x7f 2023 TIsland\n");
 
 #ifdef __ESXDOS_DOT_COMMAND
     if (z80_wpeek(23730) >= (unsigned int)RAM_ADDRESS) {

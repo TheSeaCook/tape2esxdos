@@ -1,17 +1,27 @@
 # Copyright 2023 TIsland Crew
 # SPDX-License-Identifier: Apache-2.0
+
+# build tape turbo loader by passing T2ESX_TURBO=1 argument to make
+
+CFLAGS = -SO3 --opt-code-size
+LDFLAGS = -startup=30 -clib=new
+ifdef T2ESX_TURBO
+OPTS=-DT2ESX_TURBO -Ca-DT2ESX_TURBO
+TURBO_SOURCES := tape2esxdos.asm
+endif
+
 all: t2esx t2esx-zx0.tap
 
 tap: t2esx.tap t2esx-zx0.tap
 
 t2esx: tape2esxdos.c tape2esxdos.asm
-	zcc +zx -vn -subtype=dot -startup=30 -clib=new -SO3 --opt-code-size $^ -o $@ -create-app
+	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) -subtype=dot $^ -o $@ -create-app
 
 %.tap: %.bas
 	zmakebas -a 90 -n t2esx -o $@ $^
 
-tape2esx_CODE.bin: tape2esxdos.c
-	zcc +zx -vn -SO3 -startup=30 -clib=sdcc_iy --max-allocs-per-node200000 --opt-code-size $^ -o tape2esx 
+tape2esx_CODE.bin: tape2esxdos.c $(TURBO_SOURCES)
+	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) $^ -o tape2esx 
 
 code.tap: tape2esx_CODE.bin
 	bin2tap -c $^ $@ t2esx 32768
