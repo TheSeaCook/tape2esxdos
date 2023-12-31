@@ -21,6 +21,13 @@ concatenates the t2esx TAP file with the data file and send it to
 Speccy. Of course, dot command has to be copied to the target Speccy
 first.
 
+Since version `X.Y.Z` experimental builds with fast loading are available.
+These are prepared for the owners of the original 48 and 128 hardware,
+where CPU overlocking is not possible. If you have a modern re-creation,
+it is advised to increase the CPU clock frequency instead (e.g. Next
+can load "tapes" at 8x speed when using 28Mhz). It should be easy to
+spot fast loader enabled version, it shows `tM.N` instead of `vM.N`.
+
 ### Preparing data file
 
 Utility uses non-standard tape block identifiers, so data for transfer
