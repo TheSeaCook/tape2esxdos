@@ -6,8 +6,11 @@
 CFLAGS = -SO3 --opt-code-size
 LDFLAGS = -startup=30 -clib=new
 ifdef T2ESX_TURBO
-OPTS=-DT2ESX_TURBO -Ca-DT2ESX_TURBO
+OPTS +=-DT2ESX_TURBO -Ca-DT2ESX_TURBO
 TURBO_SOURCES := tape2esxdos.asm
+endif
+ifdef T2ESX_NEXT
+OPTS +=-DT2ESX_NEXT
 endif
 
 all: t2esx t2esx-zx0.tap

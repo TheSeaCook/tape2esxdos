@@ -62,7 +62,7 @@ extern unsigned char __LIB__ esxdos_zx_tape_load_block_callee(void *dst,unsigned
 #define esxdos_zx_tape_load_block(a,b,c) zx_tape_load_block(a,b,c)
 #endif // __ESXDOS_DOT_COMMAND || T2ESX_TURBO
 
-unsigned char break_pressed(void) {
+unsigned char break_pressed(void) __smallc __z88dk_fastcall {
     unsigned char brk = 0x0;
     if (in_key_pressed(IN_KEY_SCANCODE_SPACE | 0x8000)) {
         in_wait_nokey();
@@ -82,7 +82,7 @@ void get_fname(unsigned char *fname, unsigned char *hdname) {
     }
 }
 
-void load_header(unsigned int expected) {
+void load_header(unsigned int expected) __smallc __z88dk_fastcall {
     unsigned char rc;
     printf("?\x08");
     while(1) {
@@ -119,7 +119,7 @@ void load_header(unsigned int expected) {
     }
 }
 
-unsigned char copy_chunk() {
+unsigned char copy_chunk() __smallc __z88dk_fastcall {
     unsigned char rc;
     rc = esxdos_zx_tape_load_block(buffer, hdr.hdlen, ZXT_TYPE_DATA);
     if (0 == rc) {
@@ -133,7 +133,7 @@ unsigned char copy_chunk() {
     return rc;
 }
 
-void cleanup(void) {
+void cleanup(void) __smallc __z88dk_fastcall {
     esxdos_f_close(file);
 }
 
@@ -147,6 +147,50 @@ void check_args(unsigned int argc, const char *argv[]) {
     }
 }
 #endif // __ESXDOS_DOT_COMMAND
+
+#ifdef T2ESX_NEXT
+// https://www.specnext.com/forum/viewtopic.php?p=13725
+unsigned char zx_model_next() __smallc __z88dk_fastcall {
+__asm
+    ld  l,0
+    ld  a,$80
+    DB  $ED, $24, $00, $00   ; mirror a : nop : nop
+    dec a
+    jr  nz,_not_z80n
+    ld  l,0x7f
+_not_z80n:
+__endasm;
+}
+
+#define REG_TURBO_MODE 7
+#define RTM_3MHZ  0x00
+#define RTM_7MHZ  0x01
+#define RTM_14MHZ  0x02
+#define RTM_28MHZ  0x03
+
+unsigned char ZXN_READ_REG(unsigned char reg) __smallc __z88dk_fastcall {
+// Load subset of DEHL with single argument (L if 8-bit, HL if 16-bit, DEHL if 32-bit) 2. call function 3. return value is in a subset of DEHL
+// https://wiki.specnext.dev/CPU_Speed_control
+// https://wiki.specnext.dev/CPU_Speed_Register
+__asm
+    ld bc, 0x243b   ; https://wiki.specnext.dev/TBBlue_Register_Select
+    out (c), l
+    inc b ;0x253b   ; https://wiki.specnext.dev/TBBlue_Register_Access
+    in a, (c)       ; rrAArrPP - Actual, Programmed, reserved
+    ld l, a         ; 76543210
+__endasm;
+}
+
+void check_cpu_speed() __smallc __z88dk_fastcall {
+    unsigned char speed;
+    if (zx_model_next()) {
+        // bits 5-4 "Current actual CPU speed", 1-0 - configured speed
+        if(RTM_3MHZ != (speed = (ZXN_READ_REG(REG_TURBO_MODE)>>4)&0x03)) {
+            printf("W: CPU@%uMHz\n", 7<<(speed-1));
+        }
+    }
+}
+#endif // T2ESX_NEXT
 
 #ifdef __ESXDOS_DOT_COMMAND
 unsigned int main(unsigned int argc, const char *argv[]) {
@@ -169,6 +213,9 @@ unsigned int main() {
 
     check_args(argc, argv);
 #endif // __ESXDOS_DOT_COMMAND
+#ifdef T2ESX_NEXT
+    check_cpu_speed();
+#endif // T2ESX_NEXT
 
     load_header(1);
 
