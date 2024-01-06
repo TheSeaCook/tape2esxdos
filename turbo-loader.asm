@@ -6,8 +6,13 @@
 ; after all the changes it looks similar to LD_BYTES from unofficial 48turbo.zip
 ; and, of course,
 ;     "The complete ZX Spectrum ROM disassembly" , Melbourne House 1983.
-;                                 by Dr. Ian Logan & Dr. Franklin O'Hara    ISBN 0 86759 117 X
+;     by Dr. Ian Logan & Dr. Franklin O'Hara    ISBN 0 86759 117 X
 ; TODO: since we have it in RAM, we should optimise it for size
+
+; basic math, from Ramsoft's guide:
+; t-states = clock / (2 * f)
+; EDGE_2 to EDGE_2 time:
+; T-States = 206 + 118 * (B-Reg-Val - B-Reg-Start-Val - 1) + 56 * A-Reg-Val + STUFF
 
 LD_BYTES:
     IN         A,(0xfe)

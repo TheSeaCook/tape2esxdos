@@ -121,14 +121,14 @@ def tzx_turbo_speed_header_mcleod(t, size): # mcload timings
 
 def tzx_turbo_speed_header(t, size):
   bh = bytearray(18)
-  bh[0:2] = pack('<H', 0x580) # PILOT
-  bh[2:4] = pack('<H', 0x18D) # SYNC 1st
-  bh[4:6] = pack('<H', 0x13d) # SYNC 2nd
-  bh[6:8] = pack('<H', 0x145) # ZERO
-  bh[8:10] = pack('<H', 0x289) # ONE
-  bh[10:12] = pack('<H', 0x12e3) # PILOT len
+  bh[0:2] = pack('<H', 1408) # PILOT
+  bh[2:4] = pack('<H', 397) # SYNC 1st
+  bh[4:6] = pack('<H', 317) # SYNC 2nd
+  bh[6:8] = pack('<H', 325) # ZERO
+  bh[8:10] = pack('<H', 649) # ONE
+  bh[10:12] = pack('<H', 4835) # PILOT len
   bh[12:13] = pack('<B', 8) # last byte used bits
-  bh[13:15] = pack('<H', 0x13e ) # pause after
+  bh[13:15] = pack('<H', 318) # pause after
   bh[15:17] = pack('<H', size) # data length
   bh[17] = 0 # our length fits 2 bytes
   t.write(b'\x11')
