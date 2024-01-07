@@ -93,7 +93,7 @@ has to be manually adjusted before launching the dot command (using
 regular `CLEAR NNNNN`), maximum suggested value reported by the utility
 (`45055` at the moment).
 
-NOTE: Next ZXOS emulation level does not allow overwriting currenly
+NOTE: Next ZXOS emulation layer does not allow overwriting currenly
 running dot command (error #8). On the Next you cannot do `.cd /dot`
 `.t2esx -f` to self-update, you have to load the new version somewhere
 else and later move it under `/dot`.
