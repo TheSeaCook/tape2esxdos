@@ -27,9 +27,9 @@
 
 // 4 chars only for the version tag
 #ifdef T2ESX_TURBO
-#define VER "t1.C"
+#define VER "t1.D"
 #else
-#define VER "v1.C"
+#define VER "v1.D"
 #endif // T2ESX_TURBO
 
 #define BTX_ID_MASK 0xF0u
