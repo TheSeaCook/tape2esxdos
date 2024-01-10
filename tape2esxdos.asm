@@ -1,3 +1,5 @@
+; Copyright 2023,24 TIsland Crew
+; SPDX-License-Identifier: Apache-2.0
 SECTION code_clib
 SECTION code_arch
 

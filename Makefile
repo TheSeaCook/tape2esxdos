@@ -1,29 +1,42 @@
-# Copyright 2023 TIsland Crew
+# Copyright 2023,24 TIsland Crew
 # SPDX-License-Identifier: Apache-2.0
 
 # build tape turbo loader by passing T2ESX_TURBO=1 argument to make
 
 CFLAGS = -SO3 --opt-code-size
 LDFLAGS = -startup=30 -clib=new
+ifdef DEBUG
+OPTS +=-debug -DDEBUG -Ca-DDEBUG
+endif
 ifdef T2ESX_TURBO
 OPTS +=-DT2ESX_TURBO -Ca-DT2ESX_TURBO
-TURBO_SOURCES := tape2esxdos.asm
+TURBO_SOURCES += tape2esxdos.asm
 endif
 ifdef T2ESX_NEXT
+ifdef T2ESX_CPUFREQ
+$(error T2ESX_NEXT and T2ESX_CPUFREQ cannot be enabled at the same time!)
+endif
 OPTS +=-DT2ESX_NEXT
+endif
+ifdef T2ESX_CPUFREQ
+ifdef T2ESX_NEXT
+$(error T2ESX_NEXT and T2ESX_CPUFREQ cannot be enabled at the same time!)
+endif
+OPTS +=-DT2ESX_CPUFREQ -Ca-DT2ESX_CPUFREQ
+UTIL_SOURCES += cpuspeed.asm
 endif
 
 all: t2esx t2esx-zx0.tap
 
 tap: t2esx.tap t2esx-zx0.tap
 
-t2esx: tape2esxdos.c tape2esxdos.asm
+t2esx: tape2esxdos.c tape2esxdos.asm $(UTIL_SOURCES)
 	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) -subtype=dot $^ -o $@ -create-app
 
 %.tap: %.bas
 	zmakebas -a 90 -n t2esx -o $@ $^
 
-tape2esx_CODE.bin: tape2esxdos.c $(TURBO_SOURCES)
+tape2esx_CODE.bin: tape2esxdos.c $(TURBO_SOURCES) $(UTIL_SOURCES)
 	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) $^ -o tape2esx 
 
 code.tap: tape2esx_CODE.bin

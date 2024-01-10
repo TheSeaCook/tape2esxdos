@@ -1,4 +1,4 @@
-// Copyright 2023 TIsland Crew
+// Copyright 2023,24 TIsland Crew
 // SPDX-License-Identifier: Apache-2.0
 #include <arch/zx.h>
 #include <arch/zx/esxdos.h>
@@ -17,20 +17,16 @@
 #pragma output REGISTER_SP = 45055
 #endif // __ESXDOS_DOT_COMMAND
 
-/*
- * compile for esxDOS:
- * zcc +zx -vn -subtype=dot -startup=30 -clib=new -SO3 --opt-code-size esxdos_asm_zx_tape_load_block.asm s.c -o s -create-app
- *  clib=sdcc_iy doesn't work with ASM code
- * compile for 48/128:
- * zcc +zx -v -SO3 -startup=30 -clib=new --opt-code-size s.c && z88dk-appmake +zx -b a_CODE.bin --org 0x8000 -o a.tap
- */
+#ifdef T2ESX_TURBO
+#define VTAG "t"
+#elif defined(T2ESX_CPUFREQ) || defined(T2ESX_NEXT)
+#define VTAG "V"
+#else
+#define VTAG "v"
+#endif // T2ESX_TURBO / T2ESX_CPUFREQ
 
 // 4 chars only for the version tag
-#ifdef T2ESX_TURBO
-#define VER "t1.D"
-#else
-#define VER "v1.D"
-#endif // T2ESX_TURBO
+#define VER VTAG"1.E"
 
 #define BTX_ID_MASK 0xF0u
 #define BTX_ID_TYPE 0x80u
@@ -53,6 +49,16 @@ static unsigned char overwrite;
 #ifdef COMPARE_CHUNK_NAMES
 static unsigned char tname[10];
 #endif // COMPARE_CHUNK_NAMES
+/
+#ifdef T2ESX_CPUFREQ
+extern unsigned int __LIB__ cpu_speed_callee(void) __smallc __z88dk_callee;
+#define cpu_speed() cpu_speed_callee()
+
+#define CPU_3MHZ    0
+#define CPU_7MHZ    1
+#define CPU_14MHZ   2
+#define CPU_28MHZ   3
+#endif // T2ESX_CPUFREQ
 
 #if defined(T2ESX_TURBO) || defined(__ESXDOS_DOT_COMMAND)
 extern unsigned char __LIB__ esxdos_zx_tape_load_block(void *dst,unsigned int len,unsigned char type) __smallc;
@@ -192,6 +198,35 @@ void check_cpu_speed() __smallc __z88dk_fastcall {
 }
 #endif // T2ESX_NEXT
 
+#ifdef T2ESX_CPUFREQ
+unsigned char t_states_to_mhz(unsigned int tstates) __smallc __z88dk_fastcall {
+    if (tstates<3116) { // 3036/3080 48/128
+        return CPU_3MHZ;
+    } else if (tstates<6233) {  // 6163
+        return CPU_7MHZ;
+    } else if (tstates<12466) { // 9777
+        return CPU_14MHZ;
+    //} else if (tstates<24932) { // 19559
+        //return CPU_28MHZ;
+    } else {
+        return CPU_28MHZ;
+    }
+}
+
+void check_cpu_speed() __smallc __z88dk_fastcall {
+    unsigned char speed;
+#ifdef DEBUG
+    unsigned int tstates = cpu_speed();
+    printf("DEBUG: T-states %u\n", tstates);
+    if ((speed = t_states_to_mhz(tstates)) > CPU_3MHZ) {
+#else
+    if ((speed = t_states_to_mhz(cpu_speed())) > CPU_3MHZ) {
+#endif
+        printf("w: CPU@%uMHz\n", 7<<(speed-1));
+    }
+}
+#endif // T2ESX_CPUFREQ
+
 #ifdef __ESXDOS_DOT_COMMAND
 unsigned int main(unsigned int argc, const char *argv[]) {
 #else
@@ -201,9 +236,9 @@ unsigned int main() {
     unsigned char fname[11];
 
     z80_bpoke(23692, 255); // disable "scroll ?" prompts
-    //               1            2         3
-    //      123456 7890 123456789   0123456789012
-    printf("t2esx " VER" BulkTX \x7f 2023 TIsland\n");
+    //                1           2            3
+    //      123456 7890 123456789 0   123456789012
+    printf("t2esx " VER" BulkTX \x7f""23,24 TIsland\n");
 
 #ifdef __ESXDOS_DOT_COMMAND
     if (z80_wpeek(23730) >= (unsigned int)RAM_ADDRESS) {
@@ -213,9 +248,9 @@ unsigned int main() {
 
     check_args(argc, argv);
 #endif // __ESXDOS_DOT_COMMAND
-#ifdef T2ESX_NEXT
+#if defined(T2ESX_NEXT) || defined(T2ESX_CPUFREQ)
     check_cpu_speed();
-#endif // T2ESX_NEXT
+#endif // T2ESX_NEXT || T2ESX_CPUFREQ
 
     load_header(1);
 
