@@ -15,7 +15,9 @@ MAX_BLOCK_SIZE=16384
 BTX_OPEN_ID=0x87
 BTX_CHUNK_ID=0x88
 
-turbo = False # FIXME:
+# TODO: rewrite it as a class, too messy today
+turbo = False   # FIXME:
+bundle = False  # FIXME:
 
 #read file in BLOCK_SIZE chunks, write to TAP with
 #  ID 0x88, vars -- total number of chunks, hdadd -- current chunk number
@@ -52,6 +54,7 @@ def split(name, delay=False, block_size=(MAX_BLOCK_SIZE/2), pause=0, split=False
     else:
       with open(name+ftyp, 'wb') as tap:
         if turbo: tzx_start(tap)
+        elif bundle: tape_add_loader(tap, "t2esx-zx0.tap", "t2esx.tap")
         data = f.read(block_size)
         while data:
           packchunk(tap, dosname, ordinal, nchunks, data, delay)
@@ -158,6 +161,15 @@ def tape_data(t, data):
   t.write(data)
   t.write(pack('<B', chksum([0xff], data)))
 
+def tape_add_loader(t, *loaders):
+  for loader in loaders:
+    if exists(loader) and getsize(loader)>0:
+      print("Adding", loader, "to the bundle")
+      with open(loader, 'rb') as l:
+        t.write(l.read()) # FIXME: fixed length buffer?
+      return
+  print("ERROR: None of the loaders found", loaders)
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
       description='Prepares .xchtap file(s) for t2esx'
@@ -171,14 +183,23 @@ if __name__ == '__main__':
       help='add pause (x 256b) between data chunks')
   parser.add_argument('-d', '--no-delay', action='store_true', default=False,
       help='skip delay before first data chunk, added by default')
-  parser.add_argument('-t', '--turbo', action='store_true', default=False)
+  parser.add_argument('-t', '--turbo', action='store_true', default=False,
+      help='produce TZX file at 2x speed, requires special t2esx build')
+  parser.add_argument('-u', '--bundle', action='store_true', default=False,
+      help='bundle t2esx.tap with the data')
   args = parser.parse_args()
 
   if None != args.block_size and args.block_size > MAX_BLOCK_SIZE:
     raise TypeError('Block size cannot be larger than {}'.format(MAX_BLOCK_SIZE))
   if args.split and args.pause > 0:
     print("WARNING: no pause added when splitting output")
+  if args.bundle:
+    if args.split:
+      print("WARNING: no bundles when splitting output")
+    if args.turbo:
+      print("ERROR: turbo budles not supported yet")
   turbo = args.turbo
+  bundle = args.bundle
   print(args)
 
   for name in args.files:
