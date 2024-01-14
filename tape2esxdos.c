@@ -62,24 +62,32 @@ static unsigned char tname[10];
 #endif // COMPARE_CHUNK_NAMES
 
 #ifdef T2ESX_CPUFREQ
-extern unsigned int __LIB__ cpu_speed_callee(void) __smallc __z88dk_callee;
-#define cpu_speed() cpu_speed_callee()
 
 #define CPU_3MHZ    0
 #define CPU_7MHZ    1
 #define CPU_14MHZ   2
 #define CPU_28MHZ   3
+
+extern unsigned int __LIB__ cpu_speed_callee(void) __smallc __z88dk_callee;
+#define cpu_speed() cpu_speed_callee()
+
 #endif // T2ESX_CPUFREQ
 
 #ifdef T2ESX_NEXT
-static unsigned char next_current_speed;
-static unsigned char next_required_speed;
 
 #define REG_TURBO_MODE 7
+#define RTM_UNDEF 0x7f
 #define RTM_3MHZ  0x00
 #define RTM_7MHZ  0x01
 #define RTM_14MHZ  0x02
 #define RTM_28MHZ  0x03
+
+static unsigned char next_current_speed;
+#ifdef __ESXDOS_DOT_COMMAND
+static unsigned char next_required_speed = RTM_28MHZ;
+#else
+static unsigned char next_required_speed = RTM_UNDEF;
+#endif // __ESXDOS_DOT_COMMAND
 
 #endif // T2ESX_NEXT
 
@@ -178,7 +186,7 @@ void check_args(unsigned int argc, const char *argv[]) {
             if (strlen(argv[i]) > 2) {
                 next_required_speed = 0x03 & (argv[i][2] - '0');
             } else {
-                next_required_speed = RTM_28MHZ;
+                next_required_speed = RTM_3MHZ;
             }
             debugpf("requested speed: %u\n", next_required_speed);
         }
@@ -233,16 +241,17 @@ void speed_restore() __z88dk_fastcall {
 void check_cpu_speed() __z88dk_fastcall {
     unsigned char speed;
     if (zx_model_next()) {
-        if (next_required_speed > 0) {
+        if (RTM_UNDEF != next_required_speed) {
             next_current_speed = ZXN_READ_REG(REG_TURBO_MODE)&0x03;
             atexit(speed_restore);
             ZXN_WRITE_REG(REG_TURBO_MODE, next_required_speed);
+            debugpf("%u -> REG7\n", next_required_speed);
         }
         // https://wiki.specnext.dev/CPU_Speed_control
         // https://wiki.specnext.dev/CPU_Speed_Register
         // bits 5-4 "Current actual CPU speed", 1-0 - configured speed
         if(RTM_3MHZ != (speed = (ZXN_READ_REG(REG_TURBO_MODE)>>4)&0x03)) {
-            printf("W: CPU@%uMHz\n", 7<<(speed-1));
+            printf("\x06""CPU @ %uMHz\n", 7<<(speed-1));
         }
     }
 }
