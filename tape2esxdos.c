@@ -11,6 +11,8 @@
 
 #ifdef DEBUG
 #define debugpf(...) printf("DEBUG: "__VA_ARGS__)
+#else
+#define debugpf(...)
 #endif // DEBUG
 
 #pragma printf "%s %u"
@@ -281,7 +283,11 @@ void check_cpu_speed() __z88dk_fastcall {
 #else
     if ((speed = t_states_to_mhz(cpu_speed())) > CPU_3MHZ) {
 #endif
-        printf("w: CPU@%uMHz\n", 7<<(speed-1));
+#ifdef T2ESX_TURBO
+        printf("W: flaky 2x\x06""CPU@%uMHz\n", 7<<(speed-1));
+#else
+        printf("\x06""CPU@%uMHz\n", 7<<(speed-1));
+#endif // T2ESX_TURBO
     }
 }
 #endif // T2ESX_CPUFREQ

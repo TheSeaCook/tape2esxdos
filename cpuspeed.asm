@@ -11,13 +11,13 @@ EXTERN asm_cpu_push_di, asm_z80_pop_ei_jp
 ; FIXME: contrary to the "popular maths" below, 6 seems to be
 ; enough for Sizif (there are some known bugs in current rev)
 ; IRQ handler duration: 34 + 13*(slowdown_delay-1)
-slowdown_delay   equ     18
+initial_delay   equ     1
 
 irq_vec    equ        0xc000
 irq        equ        0xc1c1
 assert irq / 256 == irq % 256
 
-cpu_speed_callee:
+cpu_speed_callee:       ; uses i, af, bc, de, hl
         call asm_cpu_push_di
         ; setup irq vector table
         ld hl, irq_vec
@@ -34,14 +34,15 @@ cpu_speed_callee:
         ld (hl), interrupt/256
         ; init Mode 2
 #ifdef PRESEVE_REG_I
-        ld a,i
+        ld a, i
         push af
 #endif ; PRESEVE_REG_I
         ld a, irq_vec/256
         ld i, a
         im 2
         ; counters/delays config
-        ld c, slowdown_delay
+        ld c, initial_delay
+_restart:
         xor a   ; we start with 0
         ld hl, 0 ; our counter
         ei
@@ -51,10 +52,31 @@ _measure:
         cp 1    ; if we still have 1, wait and count
         jp z, _measure
         di
-        ; FIXME: adjust delay with some reasonable default?
+#ifdef DEBUG
+        push af
+        ld a, e
+        or 0b10000000
+        ld (16384+6148), a
+        pop af
+#endif
+        xor a
+        cp h
+        jr nz,_exit
+        inc c           ; underflow? increase delay +13T
+#ifdef DEBUG
+        ld a, 0b10111000 ; FLASH + WHITE bg BLACK fg
+        ld (16384+6144),a
+#endif
+        jr _restart
+_exit:
+#ifdef DEBUG
+        ld a, c
+        or 0b10000000
+        ld (16384+6145), a
+#endif
 #ifdef PRESEVE_REG_I
         pop af
-        ld i, a
+        ld i,a
 #endif ; PRESEVE_REG_I
         im 1
 
