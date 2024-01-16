@@ -33,10 +33,10 @@ cpu_speed_callee:       ; uses i, af, bc, de, hl
         inc hl
         ld (hl), interrupt/256
         ; init Mode 2
-#ifdef PRESEVE_REG_I
+ifdef PRESEVE_REG_I
         ld a, i
         push af
-#endif ; PRESEVE_REG_I
+endif ; PRESEVE_REG_I
         ld a, irq_vec/256
         ld i, a
         im 2
@@ -56,21 +56,21 @@ _measure:
         cp h
         jr nz,_exit
         inc c           ; underflow? increase delay +13T
-#ifdef DEBUG
+ifdef DEBUG
         ld a, 0b10111000 ; FLASH + WHITE bg BLACK fg
         ld (16384+6144),a
-#endif
+endif
         jr _restart
 _exit:
-#ifdef DEBUG
+ifdef DEBUG
         ld a, c
         or 0b10000000
         ld (16384+6145), a
-#endif
-#ifdef PRESEVE_REG_I
+endif
+ifdef PRESEVE_REG_I
         pop af
         ld i,a
-#endif ; PRESEVE_REG_I
+endif ; PRESEVE_REG_I
         im 1
 
         jp asm_z80_pop_ei_jp
