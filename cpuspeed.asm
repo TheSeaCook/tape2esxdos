@@ -52,13 +52,6 @@ _measure:
         cp 1    ; if we still have 1, wait and count
         jp z, _measure
         di
-#ifdef DEBUG
-        push af
-        ld a, e
-        or 0b10000000
-        ld (16384+6148), a
-        pop af
-#endif
         xor a
         cp h
         jr nz,_exit
