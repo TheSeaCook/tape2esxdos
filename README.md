@@ -21,7 +21,7 @@ concatenates the t2esx TAP file with the data file and send it to
 Speccy. Of course, dot command has to be copied to the target Speccy
 first.
 
-Since version `X.Y.Z` experimental builds with fast loading are available.
+Since version `2.0` experimental builds with fast loading are available.
 These are prepared for the owners of the original 48 and 128 hardware,
 where CPU overlocking is not possible. If you have a modern re-creation,
 it is advised to increase the CPU clock frequency instead (e.g. Next
@@ -51,6 +51,28 @@ Additional options generally required only if you want to use higher
 than normal transfer speed (e.g. on Next running at 28MHz it is possible
 to use 8x playback speed, but you may need --pause 2 or longer,
 depending on your SD card write performance).
+
+### split.py command line arguments
+
+```
+usage: split.py [-h] [-b BLOCK_SIZE] [-s] [-p PAUSE] [-d] [-t] [-u] files [files ...]
+
+Prepares .xchtap file(s) for t2esx
+
+positional arguments:
+  files
+
+options:
+  -h, --help            show this help message and exit
+  -b BLOCK_SIZE, --block-size BLOCK_SIZE
+                        chunk size, optional, up to 16384
+  -s, --split           store each chunk in a separate file
+  -p PAUSE, --pause PAUSE
+                        add pause (x 256b) between data chunks
+  -d, --no-delay        skip delay before first data chunk, added by default
+  -t, --turbo           produce TZX file at 2x speed, requires special t2esx build
+  -u, --bundle          bundle t2esx.tap with the data
+```
 
 ### t2esx output
 
