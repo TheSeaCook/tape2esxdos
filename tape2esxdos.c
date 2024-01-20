@@ -70,8 +70,8 @@ static unsigned char tname[10];
 #define CPU_14MHZ   2
 #define CPU_28MHZ   3
 
-extern unsigned int __LIB__ cpu_speed_callee(void) __smallc __z88dk_callee;
-#define cpu_speed() cpu_speed_callee()
+extern unsigned int __LIB__ cpu_speed_callee(void *addr) __smallc __z88dk_callee;
+#define cpu_speed(b) cpu_speed_callee(b)
 
 #endif // T2ESX_CPUFREQ
 
@@ -277,11 +277,11 @@ unsigned char t_states_to_mhz(unsigned int tstates) __z88dk_fastcall {
 void check_cpu_speed() __z88dk_fastcall {
     unsigned char speed;
 #ifdef DEBUG
-    unsigned int tstates = cpu_speed();
+    unsigned int tstates = cpu_speed(buffer);
     debugpf("T-states %u\n", tstates);
     if ((speed = t_states_to_mhz(tstates)) > CPU_3MHZ) {
 #else
-    if ((speed = t_states_to_mhz(cpu_speed())) > CPU_3MHZ) {
+    if ((speed = t_states_to_mhz(cpu_speed(buffer))) > CPU_3MHZ) {
 #endif
 #ifdef T2ESX_TURBO
         printf("W: flaky 2x\x06""CPU@%uMHz\n", 7<<(speed-1));

@@ -13,31 +13,38 @@ EXTERN asm_cpu_push_di, asm_z80_pop_ei_jp
 ; IRQ handler duration: 34 + 13*(slowdown_delay-1)
 initial_delay   equ     1
 
-irq_vec    equ        0xc000
-irq        equ        0xc1c1
-assert irq / 256 == irq % 256
-
+; input -- void *buffer, at least 16384 bytes long
 cpu_speed_callee:       ; uses i, af, bc, de, hl
-        call asm_cpu_push_di
+        pop hl          ; return address
+        ex (sp), hl     ; HL = buffer
+        call asm_cpu_push_di    ; uses af
+ifdef PRESEVE_REG_I
+        ld a, i
+        push af
+endif ; PRESEVE_REG_I
         ; setup irq vector table
-        ld hl, irq_vec
-        ld de, irq_vec+1
+        ld de,0x00ff
+        add hl, de
+        ld l, 0 ; hl = vector table address
+        ; hl already set to ISR vector table
+        ld a, h
+        inc a           ; handler address       *) \/
+        ld d, h
+        ld e, l
+        inc e           ; DE = HL + 1
         ld bc, 256
-        ld (hl), irq/256
+        ld (hl), a
         ldir
         ; setup handler routine
-        ld hl, irq
+        ld h, a
+        ld l, a
         ld (hl), 0xc3 ; JP
         inc hl
         ld (hl), interrupt%256
         inc hl
         ld (hl), interrupt/256
         ; init Mode 2
-ifdef PRESEVE_REG_I
-        ld a, i
-        push af
-endif ; PRESEVE_REG_I
-        ld a, irq_vec/256
+        dec a           ; back to vector table  *) /\
         ld i, a
         im 2
         ; counters/delays config
