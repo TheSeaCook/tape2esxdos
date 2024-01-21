@@ -252,12 +252,14 @@ void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
             unsigned int below_udg = UDG-BUFFER_SIZE;
             if ((below_udg-1)>RAMTOP) {
                 buf = below_udg; // RAMTOP -> buf -> UDG
-            } else if (pos+8*21>UDG) { // 21 UDG's
-                buf = pos; // UDG -> buf -> P_RAMT
+            } else if (pos-8*21>UDG) { // 21 UDG's
+                buf = pos; // UDG+168 -> buf -> P_RAMT
             }
         } else {
             buf = pos;
         }
+        // it looks like there is no point trying WORKSPACE here, there won't
+        // be 16384 (BUFFER_SIZE) between 0x8000 and RAMTOP
     } else {
         // data will be allocated at WORKSP, we need it to reach uncontended area
         unsigned int offset = WORKSP < 0x8000 ? 0x8000-WORKSP : 0;
