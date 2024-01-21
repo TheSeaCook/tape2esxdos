@@ -120,6 +120,10 @@ running dot command (error #8). On the Next you cannot do `.cd /dot`
 `.t2esx -f` to self-update, you have to load the new version somewhere
 else and later move it under `/dot`.
 
+### Data transfer tips
+
+If you need to transfer more than one file, you can use regular `tar` to bundle all of them together and, optionally, compress it with `zx7` utility (make sure you have `dzx7` installed on your Speccy). Under NextZXOS it is easier to use regular ZIP.
+
 ### Example
 
 ![screencast](docs/screencast.gif)
