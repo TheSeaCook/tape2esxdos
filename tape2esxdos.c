@@ -41,7 +41,7 @@
 #endif // T2ESX_TURBO / T2ESX_CPUFREQ
 
 // 4 chars only for the version tag
-#define VER VTAG"2.0"
+#define VER VTAG"2.A"
 
 #define BTX_ID_MASK 0xF0u
 #define BTX_ID_TYPE 0x80u
@@ -225,7 +225,8 @@ void dbg_dump_mem_vars(void) __z88dk_fastcall {
 #endif // DEBUG
 
 void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
-    unsigned int buf = 0;
+    unsigned int buf = 0;   // return value
+    unsigned int pos;       // potential buffer address
     // https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html
     unsigned int WORKSP, STKEND, RAMTOP, UDG, P_RAMT;
 
@@ -239,21 +240,23 @@ void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
     debugpf("WORKSP: %x STKEND: %x RAMTOP: %x UDG: %x P_RAMT: %x SPACES: %x\n",
         WORKSP, STKEND, RAMTOP, UDG, P_RAMT, free_spaces());
 
-    // do we have enough memory above RAMTOP? it's uncontended
-    if (RAMTOP < (P_RAMT-BUFFER_SIZE+1)) {
+    // R_RAMT points to the last byte, len = last_byte + 1
+    pos = P_RAMT-BUFFER_SIZE+1;
+    debugpf("pos: %x %u\n", pos, pos);
+    // do we have enough memory above RAMTOP? it's uncontended by definition
+    if (RAMTOP < pos) {
         // there MAY be enough bytes between RAMTOP and P_RAMT
-        debugpf("RAMTOP %u UDG %u, has free mem\n", RAMTOP, UDG);
-        // TODO: optimise, pre-calculate P_RAMT-BUFFER_SIZE
-        // it would be MUCH easier if we let ourselves to trash UDGs
+        debugpf("RAMTOP %u UDG %u, has free mem %u\n", RAMTOP, UDG, UDG-RAMTOP);
+        // it would be MUCH easier if we let ourselves trash UDGs
         if (UDG > RAMTOP) {
-            if ((UDG-BUFFER_SIZE-1)>RAMTOP) {
-                buf = (UDG-BUFFER_SIZE); // RAMTOP -> buf -> UDG
-            } else if (P_RAMT-BUFFER_SIZE+1+8*21>UDG) { // 21 UDG's
-                buf = P_RAMT-BUFFER_SIZE+1; // UDG -> buf -> P_RAMT
+            unsigned int below_udg = UDG-BUFFER_SIZE;
+            if ((below_udg-1)>RAMTOP) {
+                buf = below_udg; // RAMTOP -> buf -> UDG
+            } else if (pos+8*21>UDG) { // 21 UDG's
+                buf = pos; // UDG -> buf -> P_RAMT
             }
         } else {
-            // R_RAMT point to the last byte, len = last_byte + 1
-            buf = P_RAMT-BUFFER_SIZE+1;
+            buf = pos;
         }
     } else {
         // data will be allocated at WORKSP, we need it to reach uncontended area
