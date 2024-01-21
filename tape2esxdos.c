@@ -15,7 +15,9 @@
 #define debugpf(...)
 #endif // DEBUG
 
+#ifndef DEBUG
 #pragma printf "%s %u"
+#endif // DEBUG
 #ifdef T2ESX_NEXT
 // two atexit calls for Next (close + cpu freq)
 #pragma output CLIB_EXIT_STACK_SIZE = 2
@@ -49,8 +51,6 @@
 #define BUFFER_SIZE 16384
 #define RAM_ADDRESS 0xB000
 
-#define buffer ((void *)RAM_ADDRESS)
-
 #define ZXT_H_PROGRAM 0
 #define ZXT_H_NUM_ARRAY 1
 #define ZXT_H_CHAR_ARRAY 2
@@ -62,6 +62,11 @@ static unsigned char overwrite;
 #ifdef COMPARE_CHUNK_NAMES
 static unsigned char tname[10];
 #endif // COMPARE_CHUNK_NAMES
+#ifdef __ESXDOS_DOT_COMMAND
+static void *buffer;
+#else
+static void *buffer = (void *)RAM_ADDRESS;
+#endif // __ESXDOS_DOT_COMMAND
 
 #ifdef T2ESX_CPUFREQ
 
@@ -177,10 +182,84 @@ void cleanup(void) __z88dk_fastcall {
 }
 
 #ifdef __ESXDOS_DOT_COMMAND
+// allocate COUNT bytes from BASIC's workspace
+// NOTE: code will terminate and exit to BASIC if there is
+// not enough space between STKEND and RAMTOP
+unsigned int bc_spaces(unsigned int count) __z88dk_fastcall __naked {
+    // https://skoolkid.github.io/rom/asm/0030.html
+__asm
+    push hl
+    pop bc
+    ; BC    Number of free locations to create
+    rst 0x18
+    dw 0x0030
+    ; DE    Address of the first byte of new free space
+    ; HL    Address of the last byte of new free space
+    push de
+    pop hl
+    ret
+__endasm;
+}
+
+#ifdef DEBUG
+void dbg_dump_mem_vars(void) __z88dk_fastcall {
+    printf("WORKSP: %u\x06STKBOT: %u\nSTKEND: %u\x06RAMTOP: %u\n",
+        z80_wpeek(0x5c61), z80_wpeek(0x5c63), z80_wpeek(0x5c65), z80_wpeek(0x5cb2));
+}
+#endif // DEBUG
+
+void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
+    unsigned int buf = 0;
+    // https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html
+    unsigned int WORKSP, STKEND, RAMTOP, UDG, P_RAMT, himem;
+
+    WORKSP = z80_wpeek(0x5c61);
+    STKEND = z80_wpeek(0x5c65);
+    RAMTOP = z80_wpeek(0x5cb2);
+    UDG    = z80_wpeek(0x5c7b);
+    P_RAMT = z80_wpeek(0x5cb4);
+
+    // watch for overlows! 65535+1=0 for unsigned int!!!
+    debugpf("WORKSP: %x STKEND: %x RAMTOP: %x UDG: %x P_RAMT: %x himem: %x\n",
+        WORKSP, STKEND, RAMTOP, UDG, P_RAMT, himem);
+
+    // do we have enough memory above RAMTOP?
+    if (RAMTOP < (P_RAMT-BUFFER_SIZE+1)) { // we need uncontended RAM
+        // there MAY be enough bytes between RAMTOP and P_RAMT
+        debugpf("RAMTOP %u UDG %u, has free mem\n", RAMTOP, UDG);
+        // TODO: optimise, pre-calculate P_RAMT-BUFFER_SIZE
+        // it would be MUCH easier if we let ourselves to trash UDGs
+        if (UDG > RAMTOP) {
+            if ((UDG-BUFFER_SIZE-1)>RAMTOP) {
+                buf = (UDG-BUFFER_SIZE); // RAMTOP -> buf -> UDG
+            } else if (P_RAMT-BUFFER_SIZE+1+8*21>UDG) { // 21 UDG's
+                buf = P_RAMT-BUFFER_SIZE+1; // UDG -> buf -> P_RAMT
+            }
+        } else {
+            // R_RAMT point to the last byte, len = last_byte + 1
+            buf = P_RAMT-BUFFER_SIZE+1;
+        }
+    } else { // we need to see if we have enough room in WORKSPACE
+        // https://skoolkid.github.io/rom/asm/1F05.html: TEST_ROOM adds 0x50 bytes
+        // 80d, and we add a few more up to 256, after all we need 16k
+        unsigned int spare_end = RAMTOP - 256 - BUFFER_SIZE;
+        debugpf("spare: %x\n", spare_end);
+        // does it fit in the spare area AND can it be in the uncontended RAM?
+        if (spare_end>0x7fff && STKEND<spare_end) {
+            // data will be allocated at WORKSP, we need it to reach uncontended area
+            unsigned int offset = WORKSP < 0x8000 ? 0x8000-WORKSP : 0;
+            debugpf("BC_SPACES %u+%u %u\n", WORKSP, offset, STKEND);
+            // that MAY fail with OOM if 256 above was not enough
+            buf = bc_spaces(BUFFER_SIZE + offset) + offset;
+        }
+    }
+    return buf;
+}
+
 void check_args(unsigned int argc, const char *argv[]) {
     unsigned char i;
 
-    for (i=1; i<argc && '-' == *argv[i] && strlen(argv[i]) > 1; i++) {
+    for (i=1; i<(unsigned char)argc && '-' == *argv[i] && strlen(argv[i]) > 1; i++) {
         if ('f' == argv[i][1])
             overwrite = 1;
 #ifdef T2ESX_NEXT
@@ -306,7 +385,12 @@ unsigned int main() {
     printf("t2esx " VER" BulkTX \x7f""23,24 TIsland\n");
 
 #ifdef __ESXDOS_DOT_COMMAND
-    if (z80_wpeek(23730) >= (unsigned int)RAM_ADDRESS) {
+    buffer = allocate_buffer(BUFFER_SIZE);
+    debugpf("buffer @%x\n", buffer);
+    #ifdef DEBUG
+    dbg_dump_mem_vars();
+    #endif
+    if (!buffer) {
         printf("M RAMPTOP no good (%u)", (unsigned int)RAM_ADDRESS-1u);
         return 1;
     }
