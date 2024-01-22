@@ -58,7 +58,8 @@
 
 static struct zxtapehdr hdr;
 static unsigned char file;
-static unsigned char overwrite;
+static unsigned char overwrite; // overwrite target file
+static unsigned char wsonly;    // allocate memory in WORKSPACE only
 #ifdef COMPARE_CHUNK_NAMES
 static unsigned char tname[10];
 #endif // COMPARE_CHUNK_NAMES
@@ -244,7 +245,7 @@ void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
     pos = P_RAMT-BUFFER_SIZE+1;
     debugpf("pos: %x %u\n", pos, pos);
     // do we have enough memory above RAMTOP? it's uncontended by definition
-    if (RAMTOP < pos) {
+    if (!wsonly && RAMTOP < pos) {
         // there MAY be enough bytes between RAMTOP and P_RAMT
         debugpf("RAMTOP %u UDG %u, has free mem %u\n", RAMTOP, UDG, UDG-RAMTOP);
         // it would be MUCH easier if we let ourselves trash UDGs
@@ -278,6 +279,8 @@ void check_args(unsigned int argc, const char *argv[]) {
     for (i=1; i<(unsigned char)argc && '-' == *argv[i] && strlen(argv[i]) > 1; i++) {
         if ('f' == argv[i][1])
             overwrite = 1;
+        else if ('w' == argv[i][1])
+            wsonly = 1;
 #ifdef T2ESX_NEXT
         else if ('t' == argv[i][1]) {
             if (strlen(argv[i]) > 2) {
@@ -289,6 +292,7 @@ void check_args(unsigned int argc, const char *argv[]) {
         }
 #endif
     }
+    debugpf("- f:%d w:%d\n", overwrite, wsonly);
 }
 #endif // __ESXDOS_DOT_COMMAND
 
@@ -401,6 +405,8 @@ unsigned int main() {
     printf("t2esx " VER" BulkTX \x7f""23,24 TIsland\n");
 
 #ifdef __ESXDOS_DOT_COMMAND
+    check_args(argc, argv);
+
     buffer = allocate_buffer(BUFFER_SIZE);
     debugpf("buffer @%x\n", buffer);
     #ifdef DEBUG
@@ -410,8 +416,6 @@ unsigned int main() {
         printf("M RAMPTOP no good (%u)", (unsigned int)RAM_ADDRESS-1u);
         return 1;
     }
-
-    check_args(argc, argv);
 #endif // __ESXDOS_DOT_COMMAND
 #if defined(T2ESX_NEXT) || defined(T2ESX_CPUFREQ)
     check_cpu_speed();
