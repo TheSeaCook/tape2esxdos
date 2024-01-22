@@ -23,22 +23,23 @@ ifdef PRESEVE_REG_I
         push af
 endif ; PRESEVE_REG_I
         ; setup irq vector table
-        ld de,0x00ff
-        add hl, de
-        ld l, 0 ; hl = vector table address
+        ld de, 0x00ff
+        add hl, de      ; make sure HL algned to 256
+        ld l, 0         ; hl = vector table address
         ; hl already set to ISR vector table
-        ld a, h
+        ld a, h         ; table MSB
         inc a           ; handler address       *) \/
         ld d, h
         ld e, l
         inc e           ; DE = HL + 1
         ld bc, 256
+        ; handler address, we only need one half since MSB=LSB
         ld (hl), a
         ldir
         ; setup handler routine
         ld h, a
-        ld l, a
-        ld (hl), 0xc3 ; JP
+        ld l, a         ; full handler address in HL
+        ld (hl), 0xc3   ; JP
         inc hl
         ld (hl), interrupt%256
         inc hl
@@ -65,7 +66,7 @@ _measure:
         inc c           ; underflow? increase delay +13T
 ifdef DEBUG
         ld a, 0b10111000 ; FLASH + WHITE bg BLACK fg
-        ld (16384+6144),a
+        ld (16384+6144), a
 endif
         jr _restart
 _exit:
