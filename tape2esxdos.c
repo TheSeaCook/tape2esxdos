@@ -315,7 +315,7 @@ unsigned char ZXN_READ_REG(unsigned char reg) __z88dk_fastcall __preserves_regs(
 __asm
     ld bc, 0x243b   ; https://wiki.specnext.dev/TBBlue_Register_Select
     out (c), l
-    inc b ;0x253b   ; https://wiki.specnext.dev/TBBlue_Register_Access
+    inc b ; 0x253b  ; https://wiki.specnext.dev/TBBlue_Register_Access
     in l, (c)
     ret
 __endasm;
@@ -326,9 +326,9 @@ __asm
     pop hl ; return address
     pop de ; val
     ex (sp), hl ; reg
-    ld bc, 0x243b
+    ld bc, 0x243b   ; https://wiki.specnext.dev/TBBlue_Register_Select  
     out (c), l
-    inc b
+    inc b ; 0x253b  ; https://wiki.specnext.dev/TBBlue_Register_Access
     out (c), e
     ret
 __endasm;
@@ -351,7 +351,7 @@ void check_cpu_speed() __z88dk_fastcall {
         // https://wiki.specnext.dev/CPU_Speed_control
         // https://wiki.specnext.dev/CPU_Speed_Register
         // bits 5-4 "Current actual CPU speed", 1-0 - configured speed
-        if(RTM_3MHZ != (speed = (ZXN_READ_REG(REG_TURBO_MODE)>>4)&0x03)) {
+        if(RTM_3MHZ != (speed = (ZXN_READ_REG(REG_TURBO_MODE))&0x03)) {
             printf("\x06""CPU @ %uMHz\n", 7<<(speed-1));
         }
     }
