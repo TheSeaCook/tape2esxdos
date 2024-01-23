@@ -200,7 +200,6 @@ if __name__ == '__main__':
       print("ERROR: turbo budles not supported yet")
   turbo = args.turbo
   bundle = args.bundle
-  print(args)
 
   for name in args.files:
     split(name, not args.no_delay, args.block_size, args.pause, args.split)
