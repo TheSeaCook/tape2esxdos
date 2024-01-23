@@ -1,7 +1,22 @@
 // Copyright 2023,24 TIsland Crew
 // SPDX-License-Identifier: Apache-2.0
 
+#include <stdio.h>
+#include <z80.h>
+
 #include "wsalloc.h"
+
+#define VAR_WORKSP  0x5c61
+#define VAR_STKEND  0x5c65
+#define VAR_RAMTOP  0x5cb2
+#define VAR_UDG     0x5c7b
+#define VAR_P_RAMT  0x5cb4
+
+#ifdef DEBUG
+#define debugpf(...) printf("DEBUG: "__VA_ARGS__)
+#else
+#define debugpf(...)
+#endif // DEBUG
 
 unsigned int free_spaces() __z88dk_fastcall __naked {
 // see also https://skoolkid.github.io/rom/asm/1F1A.html
@@ -36,32 +51,20 @@ __asm
 __endasm;
 }
 
-void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
+void *allocate_above_ramtop(unsigned int size) __smallc __z88dk_callee {
     unsigned int buf = 0;   // return value
     unsigned int pos;       // potential buffer address
-    // https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html
-    unsigned int WORKSP, STKEND, RAMTOP, UDG, P_RAMT;
+    unsigned int RAMTOP = z80_wpeek(VAR_RAMTOP);
 
-    WORKSP = z80_wpeek(0x5c61);
-    STKEND = z80_wpeek(0x5c65);
-    RAMTOP = z80_wpeek(0x5cb2);
-    UDG    = z80_wpeek(0x5c7b);
-    P_RAMT = z80_wpeek(0x5cb4);
-
-    // watch for overlows! 65535+1=0 for unsigned int!!!
-    debugpf("WORKSP: %x STKEND: %x RAMTOP: %x UDG: %x P_RAMT: %x SPACES: %x\n",
-        WORKSP, STKEND, RAMTOP, UDG, P_RAMT, free_spaces());
-
-    // R_RAMT points to the last byte, len = last_byte + 1
-    pos = P_RAMT-BUFFER_SIZE+1;
-    debugpf("pos: %x %u\n", pos, pos);
-    // do we have enough memory above RAMTOP? it's uncontended by definition
-    if (!wsonly && RAMTOP < pos) {
+    pos = z80_wpeek(VAR_P_RAMT)-size+1;
+    // sans UDG, MAY we have enough above RAMTOP?
+    if (RAMTOP < pos) {
+        unsigned int UDG = z80_wpeek(VAR_UDG);
         // there MAY be enough bytes between RAMTOP and P_RAMT
-        debugpf("RAMTOP %u UDG %u, has free mem %u\n", RAMTOP, UDG, UDG-RAMTOP);
+        debugpf("RAMTOP %u UDG %u free %u\n", RAMTOP, UDG, UDG-RAMTOP);
         // it would be MUCH easier if we let ourselves trash UDGs
         if (UDG > RAMTOP) {
-            unsigned int below_udg = UDG-BUFFER_SIZE;
+            unsigned int below_udg = UDG-size;
             if ((below_udg-1)>RAMTOP) {
                 buf = below_udg; // RAMTOP -> buf -> UDG
             } else if (pos-8*21>UDG) { // 21 UDG's
@@ -70,25 +73,33 @@ void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
         } else {
             buf = pos;
         }
-        // it looks like there is no point trying WORKSPACE here, there won't
-        // be 16384 (BUFFER_SIZE) between 0x8000 and RAMTOP
-    } else {
-        // data will be allocated at WORKSP, we need it to reach uncontended area
-        unsigned int offset = WORKSP < 0x8000 ? 0x8000-WORKSP : 0;
-        debugpf("BC_SPACES %u %u %u\n", WORKSP, STKEND, offset);
-        // does it fit in the spare area AND can it be in the uncontended RAM?
-        if (free_spaces() > BUFFER_SIZE+offset) {
-            buf = bc_spaces(BUFFER_SIZE+offset) + offset;
-        }
     }
+
     return buf;
 }
+
+void *allocate_from_workspace(unsigned int size) __smallc __z88dk_callee {
+    unsigned int buf = 0;   // return value
+    unsigned int WORKSP = z80_wpeek(VAR_WORKSP);
+
+    // data will be allocated at WORKSP, we need it to reach uncontended area
+    unsigned int offset = WORKSP < 0x8000 ? 0x8000-WORKSP : 0;
+    debugpf("BC_SPACES %u %u %u\n", WORKSP, z80_wpeek(VAR_STKEND), offset);
+    unsigned int size_adj = size + offset;
+    // does it fit in the spare area AND can it be in the uncontended RAM?
+    if (free_spaces() > size_adj) {
+        buf = bc_spaces(size_adj) + offset;
+    }
+
+    return buf;
+}
+
 
 #ifdef DEBUG
 void dbg_dump_mem_vars(void) __z88dk_fastcall {
     unsigned int spaces = free_spaces();
     printf("WORKSP: %u\x06STKBOT: %u\nSTKEND: %u\x06RAMTOP: %u\n",
-        z80_wpeek(0x5c61), z80_wpeek(0x5c63), z80_wpeek(0x5c65), z80_wpeek(0x5cb2));
+        z80_wpeek(VAR_WORKSP), z80_wpeek(0x5c63), z80_wpeek(VAR_STKEND), z80_wpeek(VAR_RAMTOP));
     printf("FREE SPACES: %x %u\n", spaces, spaces);
 }
 #endif // DEBUG

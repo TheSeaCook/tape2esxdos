@@ -31,7 +31,7 @@ all: t2esx t2esx-zx0.tap
 
 tap: t2esx.tap t2esx-zx0.tap
 
-t2esx: src/tape2esxdos.c src/tape/tape2esxdos.asm $(UTIL_SOURCES)
+t2esx: src/tape2esxdos.c src/tape/tape2esxdos.asm src/arch-zx/wsalloc.c $(UTIL_SOURCES)
 	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) -subtype=dot $^ -o $@ -create-app
 
 %.tap: src/basic/%.bas

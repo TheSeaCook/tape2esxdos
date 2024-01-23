@@ -165,9 +165,6 @@ void cleanup(void) __z88dk_fastcall {
 }
 
 #ifdef __ESXDOS_DOT_COMMAND
-// FIXME:
-#include "src/arch-zx/wsalloc.c"
-
 void check_args(unsigned int argc, const char *argv[]) {
     unsigned char i;
 
@@ -250,7 +247,9 @@ unsigned int main() {
 #ifdef __ESXDOS_DOT_COMMAND
     check_args(argc, argv);
 
-    buffer = allocate_buffer(BUFFER_SIZE);
+    if(wsonly || !(buffer = allocate_above_ramtop(BUFFER_SIZE))) {
+        buffer = allocate_from_workspace(BUFFER_SIZE);
+    }
     debugpf("buffer @%x\n", buffer);
     #ifdef DEBUG
     dbg_dump_mem_vars();

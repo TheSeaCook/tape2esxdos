@@ -11,7 +11,9 @@ void dbg_dump_mem_vars(void) __z88dk_fastcall;
 #endif
 unsigned int free_spaces() __z88dk_fastcall __naked;
 unsigned int bc_spaces(unsigned int count) __z88dk_fastcall __naked;
-void *allocate_buffer(unsigned int size) __smallc __z88dk_callee;
+
+void *allocate_above_ramtop(unsigned int size) __smallc __z88dk_callee;
+void *allocate_from_workspace(unsigned int size) __smallc __z88dk_callee;
 
 #endif
 // EOF vim: ts=4:sw=4:et:ai:
