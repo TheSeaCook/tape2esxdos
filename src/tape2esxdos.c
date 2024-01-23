@@ -9,6 +9,22 @@
 #include <string.h>
 #include <z80.h>
 
+#ifdef T2ESX_NEXT
+#include "src/arch-zxn/zxn.h"
+#endif
+#ifdef T2ESX_CPUFREQ
+#include "src/cpu/cpuspeed.h"
+#endif
+#ifdef __ESXDOS_DOT_COMMAND
+#include "src/arch-zx/wsalloc.h"
+#endif // __ESXDOS_DOT_COMMAND
+#if defined(T2ESX_TURBO) || defined(__ESXDOS_DOT_COMMAND)
+#include "src/tape/t2esx-tape.h"
+#else
+#define esxdos_zx_tape_load_block(a,b,c) zx_tape_load_block(a,b,c)
+#endif // __ESXDOS_DOT_COMMAND || T2ESX_TURBO
+
+
 #ifdef DEBUG
 #define debugpf(...) printf("DEBUG: "__VA_ARGS__)
 #else
@@ -51,11 +67,6 @@
 #define BUFFER_SIZE 16384
 #define RAM_ADDRESS 0xB000
 
-#define ZXT_H_PROGRAM 0
-#define ZXT_H_NUM_ARRAY 1
-#define ZXT_H_CHAR_ARRAY 2
-#define ZXT_H_CODE 3
-
 static struct zxtapehdr hdr;
 static unsigned char file;
 static unsigned char overwrite; // overwrite target file
@@ -69,43 +80,14 @@ static void *buffer;
 static void *buffer = (void *)RAM_ADDRESS;
 #endif // __ESXDOS_DOT_COMMAND
 
-#ifdef T2ESX_CPUFREQ
-
-#define CPU_3MHZ    0
-#define CPU_7MHZ    1
-#define CPU_14MHZ   2
-#define CPU_28MHZ   3
-
-extern unsigned int __LIB__ cpu_speed_callee(void *addr) __smallc __z88dk_callee;
-#define cpu_speed(b) cpu_speed_callee(b)
-
-#endif // T2ESX_CPUFREQ
-
 #ifdef T2ESX_NEXT
-
-#define REG_TURBO_MODE 7
-#define RTM_UNDEF 0x7f
-#define RTM_3MHZ  0x00
-#define RTM_7MHZ  0x01
-#define RTM_14MHZ  0x02
-#define RTM_28MHZ  0x03
-
 static unsigned char next_current_speed;
 #ifdef __ESXDOS_DOT_COMMAND
 static unsigned char next_required_speed = RTM_28MHZ;
 #else
 static unsigned char next_required_speed = RTM_UNDEF;
 #endif // __ESXDOS_DOT_COMMAND
-
 #endif // T2ESX_NEXT
-
-#if defined(T2ESX_TURBO) || defined(__ESXDOS_DOT_COMMAND)
-extern unsigned char __LIB__ esxdos_zx_tape_load_block(void *dst,unsigned int len,unsigned char type) __smallc;
-extern unsigned char __LIB__ esxdos_zx_tape_load_block_callee(void *dst,unsigned int len,unsigned char type) __smallc __z88dk_callee;
-#define esxdos_zx_tape_load_block(a,b,c) esxdos_zx_tape_load_block_callee(a,b,c)
-#else
-#define esxdos_zx_tape_load_block(a,b,c) zx_tape_load_block(a,b,c)
-#endif // __ESXDOS_DOT_COMMAND || T2ESX_TURBO
 
 unsigned char break_pressed(void) __z88dk_fastcall {
     unsigned char brk = 0x0;
@@ -183,95 +165,8 @@ void cleanup(void) __z88dk_fastcall {
 }
 
 #ifdef __ESXDOS_DOT_COMMAND
-unsigned int free_spaces() __z88dk_fastcall __naked {
-// see also https://skoolkid.github.io/rom/asm/1F1A.html
-__asm
-    ld bc, 0
-    rst 0x18
-    dw 0x1f05   ; https://skoolkid.github.io/rom/asm/1F05.html
-    ; HL	STKEND+BC+80-SP (free space - 1) CF=1
-    ex de, hl
-    ld hl, 0xffff
-    sbc hl, de
-    ret
-__endasm;
-}
-
-// allocate COUNT bytes from BASIC's workspace
-// NOTE: code will terminate and exit to BASIC if there is
-// not enough space between STKEND and RAMTOP
-unsigned int bc_spaces(unsigned int count) __z88dk_fastcall __naked {
-    // https://skoolkid.github.io/rom/asm/0030.html
-__asm
-    push hl
-    pop bc
-    ; BC    Number of free locations to create
-    rst 0x18
-    dw 0x0030
-    ; DE    Address of the first byte of new free space
-    ; HL    Address of the last byte of new free space
-    push de
-    pop hl
-    ret
-__endasm;
-}
-
-#ifdef DEBUG
-void dbg_dump_mem_vars(void) __z88dk_fastcall {
-    unsigned int spaces = free_spaces();
-    printf("WORKSP: %u\x06STKBOT: %u\nSTKEND: %u\x06RAMTOP: %u\n",
-        z80_wpeek(0x5c61), z80_wpeek(0x5c63), z80_wpeek(0x5c65), z80_wpeek(0x5cb2));
-    printf("FREE SPACES: %x %u\n", spaces, spaces);
-}
-#endif // DEBUG
-
-void *allocate_buffer(unsigned int size) __smallc __z88dk_callee {
-    unsigned int buf = 0;   // return value
-    unsigned int pos;       // potential buffer address
-    // https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html
-    unsigned int WORKSP, STKEND, RAMTOP, UDG, P_RAMT;
-
-    WORKSP = z80_wpeek(0x5c61);
-    STKEND = z80_wpeek(0x5c65);
-    RAMTOP = z80_wpeek(0x5cb2);
-    UDG    = z80_wpeek(0x5c7b);
-    P_RAMT = z80_wpeek(0x5cb4);
-
-    // watch for overlows! 65535+1=0 for unsigned int!!!
-    debugpf("WORKSP: %x STKEND: %x RAMTOP: %x UDG: %x P_RAMT: %x SPACES: %x\n",
-        WORKSP, STKEND, RAMTOP, UDG, P_RAMT, free_spaces());
-
-    // R_RAMT points to the last byte, len = last_byte + 1
-    pos = P_RAMT-BUFFER_SIZE+1;
-    debugpf("pos: %x %u\n", pos, pos);
-    // do we have enough memory above RAMTOP? it's uncontended by definition
-    if (!wsonly && RAMTOP < pos) {
-        // there MAY be enough bytes between RAMTOP and P_RAMT
-        debugpf("RAMTOP %u UDG %u, has free mem %u\n", RAMTOP, UDG, UDG-RAMTOP);
-        // it would be MUCH easier if we let ourselves trash UDGs
-        if (UDG > RAMTOP) {
-            unsigned int below_udg = UDG-BUFFER_SIZE;
-            if ((below_udg-1)>RAMTOP) {
-                buf = below_udg; // RAMTOP -> buf -> UDG
-            } else if (pos-8*21>UDG) { // 21 UDG's
-                buf = pos; // UDG+168 -> buf -> P_RAMT
-            }
-        } else {
-            buf = pos;
-        }
-        // it looks like there is no point trying WORKSPACE here, there won't
-        // be 16384 (BUFFER_SIZE) between 0x8000 and RAMTOP
-    } else {
-        // data will be allocated at WORKSP, we need it to reach uncontended area
-        unsigned int offset = WORKSP < 0x8000 ? 0x8000-WORKSP : 0;
-        debugpf("BC_SPACES %u %u %u\n", WORKSP, STKEND, offset);
-        // does it fit in the spare area AND can it be in the uncontended RAM?
-        if (free_spaces() > BUFFER_SIZE+offset) {
-            buf = bc_spaces(BUFFER_SIZE+offset) + offset;
-        }
-    }
-    return buf;
-}
+// FIXME:
+#include "src/arch-zx/wsalloc.c"
 
 void check_args(unsigned int argc, const char *argv[]) {
     unsigned char i;
@@ -297,44 +192,6 @@ void check_args(unsigned int argc, const char *argv[]) {
 #endif // __ESXDOS_DOT_COMMAND
 
 #ifdef T2ESX_NEXT
-// https://www.specnext.com/forum/viewtopic.php?p=13725
-unsigned char zx_model_next() __z88dk_fastcall __preserves_regs(bc,de,ix,iy) __naked {
-__asm
-    ld  a,$80
-    DB  $ED, $24, $00, $00   ; mirror a : nop : nop
-    and 1
-    ld  l,a
-    ret
-__endasm;
-}
-
-unsigned char ZXN_READ_REG(unsigned char reg) __z88dk_fastcall __preserves_regs(af,de,ix,iy) __naked {
-// 1. Load subset of DEHL with single argument (L if 8-bit, HL if 16-bit, DEHL if 32-bit)
-// 2. call function
-// 3. return value is in a subset of DEHL
-__asm
-    ld bc, 0x243b   ; https://wiki.specnext.dev/TBBlue_Register_Select
-    out (c), l
-    inc b ; 0x253b  ; https://wiki.specnext.dev/TBBlue_Register_Access
-    in l, (c)
-    ret
-__endasm;
-}
-
-void ZXN_WRITE_REG_callee(unsigned char reg, unsigned char val) __smallc __z88dk_callee __preserves_regs(af,ix,iy) __naked {
-__asm
-    pop hl ; return address
-    pop de ; val
-    ex (sp), hl ; reg
-    ld bc, 0x243b   ; https://wiki.specnext.dev/TBBlue_Register_Select  
-    out (c), l
-    inc b ; 0x253b  ; https://wiki.specnext.dev/TBBlue_Register_Access
-    out (c), e
-    ret
-__endasm;
-}
-#define ZXN_WRITE_REG(a,b) ZXN_WRITE_REG_callee(a,b)
-
 void speed_restore() __z88dk_fastcall {
     ZXN_WRITE_REG(REG_TURBO_MODE, next_current_speed);
 }
@@ -359,20 +216,6 @@ void check_cpu_speed() __z88dk_fastcall {
 #endif // T2ESX_NEXT
 
 #ifdef T2ESX_CPUFREQ
-unsigned char t_states_to_mhz(unsigned int tstates) __z88dk_fastcall {
-    if (tstates<3116) { // 3036/3080 48/128
-        return CPU_3MHZ;
-    } else if (tstates<6233) {  // 6163
-        return CPU_7MHZ;
-    } else if (tstates<12466) { // 9777
-        return CPU_14MHZ;
-    //} else if (tstates<24932) { // 19559
-        //return CPU_28MHZ;
-    } else {
-        return CPU_28MHZ;
-    }
-}
-
 void check_cpu_speed() __z88dk_fastcall {
     unsigned char speed;
 #ifdef DEBUG
