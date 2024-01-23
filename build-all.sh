@@ -27,4 +27,6 @@ mv "$DIST/$ZIP" "$DIST/t2esx-48k.zip"
 make T2ESX_TURBO=1 T2ESX_CPUFREQ=1 clean dist
 mv "$DIST/$ZIP" "$DIST/t2esx-all.zip"
 
+make clean
+
 # EOF vim: ts=4:sw=4:et:ai:
