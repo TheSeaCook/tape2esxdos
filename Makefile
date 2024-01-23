@@ -10,7 +10,7 @@ OPTS +=-debug -DDEBUG -Ca-DDEBUG
 endif
 ifdef T2ESX_TURBO
 OPTS +=-DT2ESX_TURBO -Ca-DT2ESX_TURBO
-TURBO_SOURCES += tape2esxdos.asm
+TURBO_SOURCES += src/tape/tape2esxdos.asm
 endif
 ifdef T2ESX_NEXT
 ifdef T2ESX_CPUFREQ
@@ -23,20 +23,20 @@ ifdef T2ESX_NEXT
 $(error T2ESX_NEXT and T2ESX_CPUFREQ cannot be enabled at the same time!)
 endif
 OPTS +=-DT2ESX_CPUFREQ -Ca-DT2ESX_CPUFREQ
-UTIL_SOURCES += cpuspeed.asm
+UTIL_SOURCES += src/cpu/cpuspeed.asm
 endif
 
 all: t2esx t2esx-zx0.tap
 
 tap: t2esx.tap t2esx-zx0.tap
 
-t2esx: tape2esxdos.c tape2esxdos.asm $(UTIL_SOURCES)
+t2esx: src/tape2esxdos.c src/tape/tape2esxdos.asm $(UTIL_SOURCES)
 	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) -subtype=dot $^ -o $@ -create-app
 
-%.tap: %.bas
+%.tap: src/basic/%.bas
 	zmakebas -a 90 -n t2esx -o $@ $^
 
-tape2esx_CODE.bin: tape2esxdos.c $(TURBO_SOURCES) $(UTIL_SOURCES)
+tape2esx_CODE.bin: src/tape2esxdos.c $(TURBO_SOURCES) $(UTIL_SOURCES)
 	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) $^ -o tape2esx 
 
 code.tap: tape2esx_CODE.bin
@@ -48,7 +48,7 @@ t2esx.tap: loader.tap code.tap
 t2esx-zx0.tap: loader-zx0.tap code-zx0.tap
 	cat $^ > $@
 
-unpack.bin: unpack.asm
+unpack.bin: src/pk/unpack.asm
 	sjasmplus $^
 
 code-zx0.bin: unpack.bin tape2esx_CODE.bin.zx0
