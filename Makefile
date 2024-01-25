@@ -1,17 +1,38 @@
-# Copyright 2023 TIsland Crew
+# Copyright 2023,24 TIsland Crew
 # SPDX-License-Identifier: Apache-2.0
+
+# build tape turbo loader by passing T2ESX_TURBO=1 argument to make
+
+CFLAGS = -SO3 --opt-code-size
+LDFLAGS = -startup=30 -clib=new
+ifdef DEBUG
+OPTS +=-debug -DDEBUG -Ca-DDEBUG
+endif
+ifdef T2ESX_TURBO
+OPTS +=-DT2ESX_TURBO -Ca-DT2ESX_TURBO
+TURBO_SOURCES += src/tape/tape2esxdos.asm
+endif
+ifdef T2ESX_NEXT
+OPTS +=-DT2ESX_NEXT
+UTIL_SOURCES += src/arch-zxn/zxn.c
+endif
+ifdef T2ESX_CPUFREQ
+OPTS +=-DT2ESX_CPUFREQ -Ca-DT2ESX_CPUFREQ
+UTIL_SOURCES += src/cpu/cpuspeed.asm src/cpu/cpuspeed.c
+endif
+
 all: t2esx t2esx-zx0.tap
 
 tap: t2esx.tap t2esx-zx0.tap
 
-t2esx: tape2esxdos.c tape2esxdos.asm
-	zcc +zx -vn -subtype=dot -startup=30 -clib=new -SO3 --opt-code-size $^ -o $@ -create-app
+t2esx: src/tape2esxdos.c src/tape/tape2esxdos.asm src/arch-zx/wsalloc.c $(UTIL_SOURCES)
+	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) -subtype=dot $^ -o $@ -create-app
 
-%.tap: %.bas
+%.tap: src/basic/%.bas
 	zmakebas -a 90 -n t2esx -o $@ $^
 
-tape2esx_CODE.bin: tape2esxdos.c
-	zcc +zx -vn -SO3 -startup=30 -clib=sdcc_iy --max-allocs-per-node200000 --opt-code-size $^ -o tape2esx 
+tape2esx_CODE.bin: src/tape2esxdos.c $(TURBO_SOURCES) $(UTIL_SOURCES)
+	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) $^ -o tape2esx 
 
 code.tap: tape2esx_CODE.bin
 	bin2tap -c $^ $@ t2esx 32768
@@ -22,7 +43,7 @@ t2esx.tap: loader.tap code.tap
 t2esx-zx0.tap: loader-zx0.tap code-zx0.tap
 	cat $^ > $@
 
-unpack.bin: unpack.asm
+unpack.bin: src/pk/unpack.asm
 	sjasmplus $^
 
 code-zx0.bin: unpack.bin tape2esx_CODE.bin.zx0

@@ -1,5 +1,9 @@
 Tape to esxdos buld transfer utility
-Copyright 2023 TIsland Crew
+Copyright 2023,2024 TIsland Crew
 
-Compressed tape loader contains code derived from ZX0
-project, copyright Einar Saukas
+Compressed tape loader contains code derived from ZX0 project,
+copyright Einar Saukas: https://github.com/einar-saukas/ZX0
+
+CPU speed detection code uses fragments from zx-midiplayer
+(sub-licensed for t2esx under APL 2.0), copyright Eugene
+Lozovoy: https://github.com/UzixLS/zx-midiplayer
