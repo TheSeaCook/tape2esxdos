@@ -210,7 +210,7 @@ void check_cpu_speed() __z88dk_fastcall {
         // https://wiki.specnext.dev/CPU_Speed_control
         // https://wiki.specnext.dev/CPU_Speed_Register
         // bits 5-4 "Current actual CPU speed", 1-0 - configured speed
-        if(RTM_3MHZ != (speed = (ZXN_READ_REG(REG_TURBO_MODE))&0x03)) {
+        if(RTM_3MHZ != (speed = (ZXN_READ_REG(REG_TURBO_MODE)>>4)&0x03)) {
             printf("\x06""CPU @ %uMHz\n", 7<<(speed-1));
         }
     }
