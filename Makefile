@@ -13,16 +13,10 @@ OPTS +=-DT2ESX_TURBO -Ca-DT2ESX_TURBO
 TURBO_SOURCES += src/tape/tape2esxdos.asm
 endif
 ifdef T2ESX_NEXT
-ifdef T2ESX_CPUFREQ
-$(error T2ESX_NEXT and T2ESX_CPUFREQ cannot be enabled at the same time!)
-endif
 OPTS +=-DT2ESX_NEXT
 UTIL_SOURCES += src/arch-zxn/zxn.c
 endif
 ifdef T2ESX_CPUFREQ
-ifdef T2ESX_NEXT
-$(error T2ESX_NEXT and T2ESX_CPUFREQ cannot be enabled at the same time!)
-endif
 OPTS +=-DT2ESX_CPUFREQ -Ca-DT2ESX_CPUFREQ
 UTIL_SOURCES += src/cpu/cpuspeed.asm src/cpu/cpuspeed.c
 endif

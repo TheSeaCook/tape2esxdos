@@ -24,7 +24,7 @@ mv "$DIST/$ZIP" "$DIST/t2esx-48k.zip"
 
 # all features, cross-platform, CPU clock detection and 2x loading speed
 # NOTE: 2x loading speed does NOT work with overlocked CPU
-make T2ESX_TURBO=1 T2ESX_CPUFREQ=1 clean dist
+make T2ESX_NEXT=1 T2ESX_TURBO=1 T2ESX_CPUFREQ=1 clean dist
 mv "$DIST/$ZIP" "$DIST/t2esx-all.zip"
 
 make clean

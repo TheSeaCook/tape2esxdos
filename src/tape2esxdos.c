@@ -46,7 +46,9 @@
 #pragma output REGISTER_SP = 45055
 #endif // __ESXDOS_DOT_COMMAND
 
-#ifdef T2ESX_TURBO
+#if defined(T2ESX_TURBO) && defined(T2ESX_CPUFREQ) && defined(T2ESX_NEXT)
+#define VTAG "a"
+#elif defined(T2ESX_TURBO)
 #define VTAG "t"
 #elif defined(T2ESX_CPUFREQ)
 #define VTAG "V"
@@ -192,9 +194,12 @@ void check_args(unsigned int argc, const char *argv[]) {
 void speed_restore() __z88dk_fastcall {
     ZXN_WRITE_REG(REG_TURBO_MODE, next_current_speed);
 }
+#endif // T2ESX_NEXT
 
+#if defined(T2ESX_NEXT) || defined(T2ESX_CPUFREQ)
 void check_cpu_speed() __z88dk_fastcall {
     unsigned char speed;
+#ifdef T2ESX_NEXT
     if (zx_model_next()) {
         if (RTM_UNDEF != next_required_speed) {
             next_current_speed = ZXN_READ_REG(REG_TURBO_MODE)&0x03;
@@ -209,27 +214,25 @@ void check_cpu_speed() __z88dk_fastcall {
             printf("\x06""CPU @ %uMHz\n", 7<<(speed-1));
         }
     }
-}
+        else
 #endif // T2ESX_NEXT
-
-#ifdef T2ESX_CPUFREQ
-void check_cpu_speed() __z88dk_fastcall {
-    unsigned char speed;
+    {
 #ifdef DEBUG
-    unsigned int tstates = cpu_speed(buffer);
-    debugpf("T-states %u\n", tstates);
-    if ((speed = t_states_to_mhz(tstates)) > CPU_3MHZ) {
+        unsigned int tstates = cpu_speed(buffer);
+        debugpf("T-states %u\n", tstates);
+        if ((speed = t_states_to_mhz(tstates)) > CPU_3MHZ) {
 #else
-    if ((speed = t_states_to_mhz(cpu_speed(buffer))) > CPU_3MHZ) {
+        if ((speed = t_states_to_mhz(cpu_speed(buffer))) > CPU_3MHZ) {
 #endif
 #ifdef T2ESX_TURBO
-        printf("W: flaky 2x\x06""CPU@%uMHz\n", 7<<(speed-1));
+            printf("W: flaky 2x\x06""CPU@%uMHz\n", 7<<(speed-1));
 #else
-        printf("\x06""CPU@%uMHz\n", 7<<(speed-1));
+            printf("\x06""CPU@%uMHz\n", 7<<(speed-1));
 #endif // T2ESX_TURBO
+        }
     }
 }
-#endif // T2ESX_CPUFREQ
+#endif // T2ESX_NEXT || T2ESX_CPUFREQ
 
 #ifdef __ESXDOS_DOT_COMMAND
 unsigned int main(unsigned int argc, const char *argv[]) {
@@ -255,7 +258,7 @@ unsigned int main() {
     dbg_dump_mem_vars();
     #endif
     if (!buffer) {
-        printf("M RAMPTOP no good (%u)", (unsigned int)RAM_ADDRESS-1u);
+        printf("M RAMPTOP no good (%u)\n", (unsigned int)RAM_ADDRESS-1u);
         return 1;
     }
 #endif // __ESXDOS_DOT_COMMAND
