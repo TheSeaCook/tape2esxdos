@@ -214,16 +214,20 @@ void check_cpu_speed() __z88dk_fastcall {
             printf("\x06""CPU @ %uMHz\n", 7<<(speed-1));
         }
     }
+#ifdef T2ESX_CPUFREQ
         else
+#endif
 #endif // T2ESX_NEXT
+#ifdef T2ESX_CPUFREQ
     {
 #ifdef DEBUG
         unsigned int tstates = cpu_speed(buffer);
         debugpf("T-states %u\n", tstates);
-        if ((speed = t_states_to_mhz(tstates)) > CPU_3MHZ) {
+#define tstates() tstates
 #else
-        if ((speed = t_states_to_mhz(cpu_speed(buffer))) > CPU_3MHZ) {
-#endif
+#define tstates() cpu_speed(buffer)
+#endif // DEBUG
+        if ((speed = t_states_to_mhz(tstates())) > CPU_3MHZ) {
 #ifdef T2ESX_TURBO
             printf("W: flaky 2x\x06""CPU@%uMHz\n", 7<<(speed-1));
 #else
@@ -231,6 +235,7 @@ void check_cpu_speed() __z88dk_fastcall {
 #endif // T2ESX_TURBO
         }
     }
+#endif // T2ESX_CPUFREQ
 }
 #endif // T2ESX_NEXT || T2ESX_CPUFREQ
 
