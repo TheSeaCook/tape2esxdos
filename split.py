@@ -75,12 +75,15 @@ class TapWriter(ChunkWriter):
       self._write_tap_data(bytearray([0x55] * self._pause * 256))
     self._ordinal += 1
 
+  def _append_tap(self, loader):
+    with open(loader, 'rb') as l:
+      self._handle.write(l.read()) # FIXME: fixed length buffer?
+
   def _write_loader(self, *loaders):
     for loader in loaders:
       if exists(loader) and getsize(loader)>0:
         print("Adding", loader, "to the bundle")
-        with open(loader, 'rb') as l:
-          self._handle.write(l.read()) # FIXME: fixed length buffer?
+        self._append_tap(loader)
         return
     print("ERROR: None of the loaders found", loaders)
 
@@ -122,15 +125,17 @@ class SplittingTapWriter(TapWriter):
     oname = self._name + self._suffix + str(self._ordinal).zfill(4)
     with open(oname, 'wb') as tap:
       self._handle = tap
-      self._write_chunk(BTX_CHUNK_ID, chunk)
+      super().write(chunk)
       self._handle = None
-    self._ordinal += 1
 
 
 class TzxWriter(TapWriter):
   def __init__(self, *args):
     super().__init__(*args)
     self._suffix = '.xchtzx'
+
+  def _append_tap(self, loader):
+    tap2tzx(loader, self._handle)
 
   def write(self, chunk):
     if 1 == self._ordinal:
@@ -219,6 +224,20 @@ def chksum(*args):
     for b in data: chksum ^= b
   return chksum
 
+def tap2tzx(name, write_handle): # convert TAP into TZX
+  # NOTE: no TZX header added, only blocks are converted!
+  with open(name, 'rb') as tap:
+    while True:
+      lenbts = tap.read(2)
+      if not lenbts: break
+      size = unpack('<H', lenbts)[0]
+      block = tap.read(size)
+      if not block or len(block) != size:
+        raise Error('Cannot read {} bytes from {}'.format(size, name))
+      write_handle.write(b'\x10') # ID 10 - Standard Speed Data Block
+      write_handle.write(pack('<H', 1000)) # Pause after this block (ms.)
+      write_handle.write(pack('<H', size)) # Length of data that follow
+      write_handle.write(block) # Data as in .TAP files
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -243,12 +262,14 @@ if __name__ == '__main__':
     raise TypeError('Block size cannot be larger than {}'.format(MAX_BLOCK_SIZE))
   if args.split and args.pause > 0:
     print("WARNING: no pause added when splitting output")
-  if args.bundle:
-    if args.split:
+    args.pause = 0
+  if args.split:
+    if args.bundle:
       print("WARNING: no bundles when splitting output")
+      args.budle = False
     if args.turbo:
-      print("ERROR: turbo bundles not supported")
-      args.bundle = False
+      print("WARNING: no turbo when splitting output")
+      args.turbo = False
 
   for name in args.files:
     split(name, args)
