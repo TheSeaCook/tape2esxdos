@@ -59,7 +59,7 @@
 #endif // T2ESX_TURBO / T2ESX_CPUFREQ
 
 // 4 chars only for the version tag
-#define VER VTAG"2.0"
+#define VER VTAG"2.A"
 
 #define BTX_ID_MASK 0xF0u
 #define BTX_ID_TYPE 0x80u
@@ -184,7 +184,14 @@ void check_args(unsigned int argc, const char *argv[]) {
             }
             debugpf("requested speed: %u\n", next_required_speed);
         }
+#define USAGE_NEXT " [-t[0-3]]"
+#else
+#define USAGE_NEXT
 #endif
+        else if ('h' == argv[i][1]) {
+            printf(" .t2esx [-f] [-w]"USAGE_NEXT"\n");
+            exit(0);
+        }
     }
     debugpf("- f:%d w:%d\n", overwrite, wsonly);
 }
