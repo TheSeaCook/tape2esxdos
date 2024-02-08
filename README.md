@@ -96,7 +96,7 @@ Troubleshooting:
     - `O` still visible when the next HEADER block starts (note: since
       1.2 a short DATA block follows initial `OPEN_FILE` header). It
       means opening file takes too long. Let us know your
-      hardware/software detaills (Spectrum model, Div\*\*\* model/make, SD
+      hardware/software details (Spectrum model, Div\*\*\* model/make, SD
       card brand and capacity).  Workaround: just re-start upload,
       `t2esx` will ignore already processed parts.
     - `nL` still visible when the next block starts. Writing block takes
@@ -127,7 +127,7 @@ W: flaky 2x     CPU @XMHz
 ```
 
 
-NOTE: Next ZXOS emulation layer does not allow overwriting currenly
+NOTE: Next ZXOS emulation layer does not allow overwriting currently
 running dot command (error #8). On the Next you cannot do `.cd /dot`
 `.t2esx -f` to self-update, you have to load the new version somewhere
 else and later move it under `/dot`.
@@ -174,7 +174,7 @@ And do not forget to do `LOAD ""` on Speccy :)
 
 > *You may want to use `--device` if you have more than one audio sink*
 
-You will see sometyhing like
+You will see something like
 ```
 t2esx v2.0 BulkTX (C)23,24 TIsland
 'T2ESX' - 1 chunks
@@ -220,7 +220,7 @@ t2esx v2.0 BulkTX (C)23,24 TIsland
 M RAMTOP no good (45055)
 ```
 
-It means you need to move `RAMTOP` at least to the address suggsted by
+It means you need to move `RAMTOP` at least to the address suggested by
 the `t2esx`, e.g. `CLEAR 45055`. Tape version sets `RAMTOP` in the BASIC
 loader. Dot command tries to allocate required buffer automatically, but
 sometimes it is not possible and manual RAMTOP adjustment (`CLEAR
