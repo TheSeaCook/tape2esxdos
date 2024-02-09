@@ -1,6 +1,6 @@
 ## ZX Spectrum Bulk Data Transfer
 
-A set of tools for transferring arbitrary files (of arbitrary lengh, up
+A set of tools for transferring arbitrary files (of arbitrary length, up
 to 1Gb) to ZX Spectrum machine via tape input (EAR). No additional
 hardware required.
 
