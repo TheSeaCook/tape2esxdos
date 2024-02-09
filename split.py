@@ -50,8 +50,34 @@ class ChunkWriter(ABC):
   def close(self):
     pass
 
+  def write(self, chunk):
+    if 1 == self._ordinal:
+      self._write_tape_header()
+    self._write_tape_block(BTX_CHUNK_ID, chunk)
+    if self._pause > 0 and self._ordinal < self._count:
+      self._write_tape_block_data(bytearray([0x55] * self._pause * 256))
+    self._ordinal += 1
+
+  def _write_tape_header(self):
+    if self._loader:
+      self._write_loader("t2esx-zx0.tap", "t2esx.tap")
+    if self._delay:
+      self._write_tape_block(BTX_OPEN_ID, bytearray([0x77]))
+
+  def _write_tape_block(self, type_id, chunk):
+    self._write_tape_block_header(type_id, len(chunk))
+    self._write_tape_block_data(type_id, chunk)
+
   @abstractmethod
-  def write(self):
+  def _write_loader(*args):
+    pass
+
+  @abstractmethod
+  def _write_tape_block_header(self, type_id, size):
+    pass
+
+  @abstractmethod
+  def _write_tape_block_data(self, type_id, data):
     pass
 
 
@@ -64,16 +90,27 @@ class TapWriter(ChunkWriter):
   def close(self):
     self._handle.close()
 
-  def write(self, chunk):
-    if 1 == self._ordinal:
-      if self._loader:
-        self._write_loader("t2esx-zx0.tap", "t2esx.tap")
-      if self._delay:
-        self._write_chunk(BTX_OPEN_ID, bytearray([0x77]))
-    self._write_chunk(BTX_CHUNK_ID, chunk)
-    if self._pause > 0 and self._ordinal < self._count:
-      self._write_tap_data(bytearray([0x55] * self._pause * 256))
-    self._ordinal += 1
+  def _write_tap_block_prologue(self, block_size):
+    self._handle.write(pack('<H', block_size))
+
+  def _write_tape_block_header(self, type_id, size):
+    hdr = bytearray(19)
+    hdr[0] = 0 # flag byte 00 (header)
+    hdr[1] = type_id
+    hdr[2:12] = pack('<10s', self._tapname)
+    hdr[12:14] = pack('<H', size)
+    hdr[14:16] = pack('<H', self._ordinal) # param1 - this block ordinal
+    hdr[16:18] = pack('<H', self._count) # param2 - total # of blocks
+    hdr[18] = 0 # note that [18] must be 0!!! or checksum will be wrong
+    hdr[18] = chksum(hdr) # note that [18] must be 0!!!
+    self._write_tap_block_prologue(len(hdr))
+    self._handle.write(hdr)
+
+  def _write_tape_block_data(self, type_id, data):
+    self._write_tap_block_prologue(len(data)+2)
+    self._handle.write(b'\xff')
+    self._handle.write(data)
+    self._handle.write(pack('<B', chksum([0xff], data)))
 
   def _append_tap(self, loader):
     with open(loader, 'rb') as l:
@@ -86,32 +123,6 @@ class TapWriter(ChunkWriter):
         self._append_tap(loader)
         return
     print("ERROR: None of the loaders found", loaders)
-
-  def _write_chunk(self, type_id, data):
-    self._write_tap_header(type_id, len(data))
-    self._write_tap_data(data)
-
-  def _write_tap_block_prologue(self, block_size):
-    self._handle.write(pack('<H', block_size))
-
-  def _write_tap_header(self, type_id, size):
-    hdr = bytearray(19)
-    # hdr[0] = 0, flag byte 00 (header)
-    hdr[1] = type_id
-    hdr[2:12] = pack('<10s', self._tapname)
-    hdr[12:14] = pack('<H', size)
-    hdr[14:16] = pack('<H', self._ordinal) # param1 - this block ordinal
-    hdr[16:18] = pack('<H', self._count) # param2 - total # of blocks
-    hdr[18] = chksum(hdr) # note that [18] must be 0!!!
-    self._write_tap_block_prologue(len(hdr))
-    self._handle.write(hdr)
-
-  def _write_tap_data(self, data):
-    self._write_tap_block_prologue(len(data)+2)
-    self._handle.write(b'\xff')
-    self._handle.write(data)
-    self._handle.write(pack('<B', chksum([0xff], data)))
-    pass
 
 
 class SplittingTapWriter(TapWriter):
@@ -137,23 +148,16 @@ class TzxWriter(TapWriter):
   def _append_tap(self, loader):
     tap2tzx(loader, self._handle)
 
-  def write(self, chunk):
-    if 1 == self._ordinal:
-      self._write_tzx_start()
-    super().write(chunk)
-
-  def _write_tap_block_prologue(self, block_size):
-    self._write_tzx_header(block_size)
-
-  def _write_tzx_start(self):
+  def _write_tape_header(self):
     tzx = bytearray(11)
     tzx[0:8] = pack('<7s', 'ZXTape!'.encode('ASCII'))
     tzx[7] = 0x1a
     tzx[8] = 0x01
     tzx[9] = 0x14
     self._handle.write(tzx)
+    super()._write_tape_header()
 
-  def _write_tzx_header(self, size):
+  def _write_tap_block_prologue(self, size):
     bh = bytearray(18)
     bh[0:2] = pack('<H', 1408) # PILOT
     bh[2:4] = pack('<H', 397) # SYNC 1st
@@ -263,13 +267,9 @@ if __name__ == '__main__':
   if args.split and args.pause > 0:
     print("WARNING: no pause added when splitting output")
     args.pause = 0
-  if args.split:
-    if args.bundle:
-      print("WARNING: no bundles when splitting output")
-      args.budle = False
-    if args.turbo:
-      print("WARNING: no turbo when splitting output")
-      args.turbo = False
+  if args.split and args.turbo:
+    print("WARNING: no turbo when splitting output")
+    args.turbo = False
 
   for name in args.files:
     split(name, args)
