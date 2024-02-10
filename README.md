@@ -132,12 +132,37 @@ running dot command (error #8). On the Next you cannot do `.cd /dot`
 `.t2esx -f` to self-update, you have to load the new version somewhere
 else and later move it under `/dot`.
 
+### Build Variants
+
+- `ALL` (**v**2.A) should be working on any hardware, not recommended,
+  biggest code which has something completely unused on any platform.
+Can load "turbo" TZX files (produced by the `split.py`), but those
+should NOT be used with overclocked CPUs as they are less reliable
+compared to the regular TAP played back at 2x/4x/8x speed.
+- `CPU` (**V**2.A) is for modern re-creations with CPU overclocking,
+  reports detected CPU speed to simplify speed choice for TAP/TZX
+playback.
+- `Next` (**n**2.A) is built specifically for the ZX Spectrum Next, it
+  automatically increases CPU speed to the maximum enabling transfers at
+8x speed. Dot command only, use `-tn` (`n` - 1, 2, 3) to choose 7, 14 or
+28 MHz and `-t` or `-t0` to force 3MHz. Tape build does not try to
+change CPU speed, only reports fast settings. Unlike `CPU` builds it
+uses Next API to query clock speed.
+- `48k` (**t**2.A) is able to load 2x/"turbo" TZX files produced by the
+  `split.py`. This is for real 48/128/+2/+3 hardware.
+
 ### Data transfer tips
 
 If you need to transfer more than one file, you can use regular `tar` to
 bundle all of them together and, optionally, compress it with `zx7`
 utility (make sure you have `dzx7` installed on your Speccy). Under
 NextZXOS it is easier to use regular ZIP.
+
+> Note: esxdos 0.89 does not support long file names, all files in
+> archive **must** follow 8+3 naming convention or you will not be able
+> to unpack them on Speccy. Do not get confused by the NextZXOS long
+> file name support, NextZXOS offers esxdos-compatible API, but has no
+> esxdos code.
 
 ### Example
 
