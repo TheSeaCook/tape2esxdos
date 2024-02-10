@@ -7,6 +7,11 @@ fi
 
 set -e
 
+if ! python3 -m unittest >/dev/null 2>&1; then
+    echo "ERROR: Python unit tests FAILED!"
+    exit 88
+fi
+
 DIST=dist
 ZIP=t2esx.zip
 
