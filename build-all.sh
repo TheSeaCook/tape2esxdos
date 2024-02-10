@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2023,24 TIsland Crew
+# SPDX-License-Identifier: Apache-2.0
+
 if ! type zcc 2>/dev/null; then
     echo "ERROR: no z88dk in PATH"
     exit 99

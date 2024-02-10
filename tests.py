@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright 2024 TIsland Crew
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import os.path
 import unittest
