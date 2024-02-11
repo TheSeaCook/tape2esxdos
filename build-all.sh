@@ -10,6 +10,7 @@ fi
 
 set -e
 
+export PYTHONDONTWRITEBYTECODE=1
 if ! python3 -m unittest >/dev/null 2>&1; then
     echo "ERROR: Python unit tests FAILED!"
     exit 88
