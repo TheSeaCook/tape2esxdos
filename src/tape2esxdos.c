@@ -9,6 +9,8 @@
 #include <string.h>
 #include <z80.h>
 
+#define T2ESX_BUFFER
+
 #ifdef T2ESX_NEXT
 #include "src/arch-zxn/zxn.h"
 #endif
@@ -23,7 +25,6 @@
 #else
 #define esxdos_zx_tape_load_block(a,b,c) zx_tape_load_block(a,b,c)
 #endif // __ESXDOS_DOT_COMMAND || T2ESX_TURBO
-
 
 #ifdef DEBUG
 #define debugpf(...) printf("DEBUG: "__VA_ARGS__)
@@ -59,16 +60,17 @@
 #endif // T2ESX_TURBO / T2ESX_CPUFREQ
 
 // 4 chars only for the version tag
-#define VER VTAG"2.A"
+#define VER VTAG"2.B"
 
 #define BTX_ID_MASK 0xF0u
 #define BTX_ID_TYPE 0x80u
 #define BTX_OPEN_ID 0x87u
 #define BTX_CHUNK_ID 0x88u
 
-#define BUFFER_SIZE 16384
+#define DEFAULT_BUFFER_SIZE 16384
 #define RAM_ADDRESS 0xB000
 
+static unsigned int buffer_size = DEFAULT_BUFFER_SIZE;
 static struct zxtapehdr hdr;
 static unsigned char file;
 static unsigned char overwrite; // overwrite target file
@@ -126,8 +128,8 @@ void load_header(unsigned int expected) __z88dk_fastcall {
         if (break_pressed()) exit(1);
         if (rc) continue;
         if (BTX_ID_TYPE == (BTX_ID_MASK & hdr.hdtype)) {
-            if(hdr.hdlen > BUFFER_SIZE) {
-                printf("\nChunk too big %u (max %u)\n", hdr.hdlen, BUFFER_SIZE);
+            if(hdr.hdlen > buffer_size) {
+                printf("\nChunk too big %u (max %u)\n", hdr.hdlen, buffer_size);
                 exit(1);
             }
 #ifdef COMPARE_CHUNK_NAMES
@@ -168,16 +170,30 @@ void cleanup(void) __z88dk_fastcall {
 
 #ifdef __ESXDOS_DOT_COMMAND
 void check_args(unsigned int argc, const char *argv[]) {
-    unsigned char i;
+    unsigned char i, al;
 
-    for (i=1; i<(unsigned char)argc && '-' == *argv[i] && strlen(argv[i]) > 1; i++) {
+    for (i=1; i<(unsigned char)argc && '-' == *argv[i] && (al=strlen(argv[i])) > 1; i++) {
         if ('f' == argv[i][1])
             overwrite = 1;
         else if ('w' == argv[i][1])
             wsonly = 1;
+#ifdef T2ESX_BUFFER
+        else if ('b' == argv[i][1])
+            if (al > 5) {
+                buffer_size = atoi((char *)argv[i]+2);
+                debugpf("b: %s %u\n", argv[i]+2, buffer_size);
+            }
+            if (buffer_size < 1024 || buffer_size > DEFAULT_BUFFER_SIZE) {
+                buffer_size = DEFAULT_BUFFER_SIZE;
+                printf("E: bad -b%s\n", (unsigned char *)(argv[i]+2));
+            }
+#define USAGE_BUF " [-bSIZE]"
+#else
+#define USAGE_BUF
+#endif
 #ifdef T2ESX_NEXT
         else if ('t' == argv[i][1]) {
-            if (strlen(argv[i]) > 2) {
+            if (al > 2) {
                 next_required_speed = 0x03 & (argv[i][2] - '0');
             } else {
                 next_required_speed = RTM_3MHZ;
@@ -189,11 +205,11 @@ void check_args(unsigned int argc, const char *argv[]) {
 #define USAGE_NEXT
 #endif
         else if ('h' == argv[i][1]) {
-            printf(" .t2esx [-f] [-w]"USAGE_NEXT"\n");
+            printf(" .t2esx"USAGE_BUF" [-f] [-w]"USAGE_NEXT"\n");
             exit(0);
         }
     }
-    debugpf("- f:%d w:%d\n", overwrite, wsonly);
+    debugpf("- %u f:%d w:%d\n", buffer_size, overwrite, wsonly);
 }
 #endif // __ESXDOS_DOT_COMMAND
 
@@ -262,8 +278,8 @@ unsigned int main() {
 #ifdef __ESXDOS_DOT_COMMAND
     check_args(argc, argv);
 
-    if(wsonly || !(buffer = allocate_above_ramtop(BUFFER_SIZE))) {
-        buffer = allocate_from_workspace(BUFFER_SIZE);
+    if(wsonly || !(buffer = allocate_above_ramtop(buffer_size))) {
+        buffer = allocate_from_workspace(buffer_size);
     }
     debugpf("buffer @%x\n", buffer);
     #ifdef DEBUG
@@ -273,6 +289,9 @@ unsigned int main() {
         printf("M RAMPTOP no good (%u)\n", (unsigned int)RAM_ADDRESS-1u);
         return 1;
     }
+#ifdef T2ESX_BUFFER
+    printf("\x06""B:%u\n", buffer_size);
+#endif // T2ESX_BUFFER
 #endif // __ESXDOS_DOT_COMMAND
 #if defined(T2ESX_NEXT) || defined(T2ESX_CPUFREQ)
     check_cpu_speed();
