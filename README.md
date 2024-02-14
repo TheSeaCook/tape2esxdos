@@ -115,9 +115,14 @@ command should be able to allocate buffer, however in some
 configurations it may not be possible. If you get `M RAMTOP no good
 (NNNNN)`, please do `CLEAR NNNNN` (recommended value for `NNNNN` is
 `45055`). You may force dot command to use BASIC WORKSPACE only, supply
-"`-w`" command line argument. NOTE: code expects buffer in the
-uncontended memory, so WORKSPACE should have at least 16384+80 bytes
-above 0x8000.
+"`-w`" command line argument. NOTE: unless "`-l`" argument was used,
+code expects buffer in the uncontended memory, so WORKSPACE should have
+at least 16384+80 bytes above 0x8000. If you absolutely sure the buffer
+can be placed in the lower/contended RAM, use "`-l`" flag. Buffer size
+can be adjusted with "`-bNNNN`" argument. Buffer size cannot be smaller
+than 1024 bytes and greater than 16384 bytes. Normally you do not need
+to use `-l`/`-w`/`-b` flags, unless you need to preserve existing BASIC
+code and machine code/whatever you have above RAMTOP.
 
 "Turbo" builds (the ones for the classic hardware) will detect
 overlocked CPUs and report it as
