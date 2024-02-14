@@ -78,12 +78,15 @@ void *allocate_above_ramtop(unsigned int size) __smallc __z88dk_callee {
     return buf;
 }
 
-void *allocate_from_workspace(unsigned int size) __smallc __z88dk_callee {
+void *allocate_from_workspace(unsigned int size, unsigned char uncontended) __smallc __z88dk_callee {
     unsigned int buf = 0;   // return value
     unsigned int WORKSP = z80_wpeek(VAR_WORKSP);
+    unsigned int offset = 0;
 
+    if (uncontended) {
     // data will be allocated at WORKSP, we need it to reach uncontended area
-    unsigned int offset = WORKSP < 0x8000 ? 0x8000-WORKSP : 0;
+        offset = WORKSP < 0x8000 ? 0x8000-WORKSP : 0;
+    }
     debugpf("BC_SPACES %u %u %u\n", WORKSP, z80_wpeek(VAR_STKEND), offset);
     unsigned int size_adj = size + offset;
     // does it fit in the spare area AND can it be in the uncontended RAM?

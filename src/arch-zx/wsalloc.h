@@ -13,7 +13,7 @@ unsigned int free_spaces() __z88dk_fastcall __naked;
 unsigned int bc_spaces(unsigned int count) __z88dk_fastcall __naked;
 
 void *allocate_above_ramtop(unsigned int size) __smallc __z88dk_callee;
-void *allocate_from_workspace(unsigned int size) __smallc __z88dk_callee;
+void *allocate_from_workspace(unsigned int size, unsigned char uncontended) __smallc __z88dk_callee;
 
 #endif
 // EOF vim: ts=4:sw=4:et:ai:

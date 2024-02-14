@@ -75,6 +75,7 @@ static struct zxtapehdr hdr;
 static unsigned char file;
 static unsigned char overwrite; // overwrite target file
 static unsigned char wsonly;    // allocate memory in WORKSPACE only
+static unsigned char allow_lower; // allow buffer allocated in lower (contended) RAM
 #ifdef COMPARE_CHUNK_NAMES
 static unsigned char tname[10];
 #endif // COMPARE_CHUNK_NAMES
@@ -170,29 +171,32 @@ void cleanup(void) __z88dk_fastcall {
 
 #ifdef __ESXDOS_DOT_COMMAND
 void check_args(unsigned int argc, const char *argv[]) {
-    unsigned char i, al;
+    unsigned char i, flg, al;
 
     for (i=1; i<(unsigned char)argc && '-' == *argv[i] && (al=strlen(argv[i])) > 1; i++) {
-        if ('f' == argv[i][1])
+        flg = argv[i][1];
+        if ('f' == flg)
             overwrite = 1;
-        else if ('w' == argv[i][1])
+        else if ('w' == flg)
             wsonly = 1;
+        else if ('l' == flg)
+            allow_lower = 1;
 #ifdef T2ESX_BUFFER
-        else if ('b' == argv[i][1])
+        else if ('b' == flg)
             if (al > 5) {
                 buffer_size = atoi((char *)argv[i]+2);
                 debugpf("b: %s %u\n", argv[i]+2, buffer_size);
             }
             if (buffer_size < 1024 || buffer_size > DEFAULT_BUFFER_SIZE) {
                 buffer_size = DEFAULT_BUFFER_SIZE;
-                printf("E: bad -b%s\n", (unsigned char *)(argv[i]+2));
+                printf("E: -b%s\n", (unsigned char *)(argv[i]+2));
             }
 #define USAGE_BUF " [-bSIZE]"
 #else
 #define USAGE_BUF
 #endif
 #ifdef T2ESX_NEXT
-        else if ('t' == argv[i][1]) {
+        else if ('t' == flg) {
             if (al > 2) {
                 next_required_speed = 0x03 & (argv[i][2] - '0');
             } else {
@@ -204,12 +208,12 @@ void check_args(unsigned int argc, const char *argv[]) {
 #else
 #define USAGE_NEXT
 #endif
-        else if ('h' == argv[i][1]) {
-            printf(" .t2esx"USAGE_BUF" [-f] [-w]"USAGE_NEXT"\n");
+        else if ('h' == flg) {
+            printf(" .t2esx"USAGE_BUF" [-f] [[-l] -w]"USAGE_NEXT"\n");
             exit(0);
         }
     }
-    debugpf("- %u f:%d w:%d\n", buffer_size, overwrite, wsonly);
+    debugpf("- %u l:%u f:%d w:%d\n", buffer_size, allow_lower, overwrite, wsonly);
 }
 #endif // __ESXDOS_DOT_COMMAND
 
@@ -279,7 +283,7 @@ unsigned int main() {
     check_args(argc, argv);
 
     if(wsonly || !(buffer = allocate_above_ramtop(buffer_size))) {
-        buffer = allocate_from_workspace(buffer_size);
+        buffer = allocate_from_workspace(buffer_size, !allow_lower);
     }
     debugpf("buffer @%x\n", buffer);
     #ifdef DEBUG
