@@ -75,7 +75,9 @@ static struct zxtapehdr hdr;
 static unsigned char file;
 static unsigned char overwrite; // overwrite target file
 static unsigned char wsonly;    // allocate memory in WORKSPACE only
-static unsigned char allow_lower; // allow buffer allocated in lower (contended) RAM
+#define WS_UNCONTENDED_MASK 0x10
+// wsonly: bit 5 - require unconteded ram, bit 0 - use WS only
+// 0x11 -- WS only, unconteded only, 0x01 -- WS, allow conteded
 #ifdef COMPARE_CHUNK_NAMES
 static unsigned char tname[10];
 #endif // COMPARE_CHUNK_NAMES
@@ -177,20 +179,25 @@ void check_args(unsigned int argc, const char *argv[]) {
         flg = argv[i][1];
         if ('f' == flg)
             overwrite = 1;
-        else if ('w' == flg)
-            wsonly = 1;
-        else if ('l' == flg)
-            allow_lower = 1;
+        else if ('m' == flg)
+            printf(" @WS:%u\n", free_spaces());
+        else if ('w' == flg) {
+            wsonly = 0x11; // bits 5+1, require unconteded RAM + WS only
+            if (al > 2 && 'l' == argv[i][2]) {
+                wsonly = 0x01; // allow lower RAM for WS allocation
+            }
+        }
 #ifdef T2ESX_BUFFER
-        else if ('b' == flg)
+        else if ('b' == flg) {
             if (al > 5) {
                 buffer_size = atoi((char *)argv[i]+2);
                 debugpf("b: %s %u\n", argv[i]+2, buffer_size);
+                if (buffer_size < 1024 || buffer_size > DEFAULT_BUFFER_SIZE) {
+                    buffer_size = DEFAULT_BUFFER_SIZE;
+                    printf("E: %s\n", argv[i]);
+                }
             }
-            if (buffer_size < 1024 || buffer_size > DEFAULT_BUFFER_SIZE) {
-                buffer_size = DEFAULT_BUFFER_SIZE;
-                printf("E: -b%s\n", (unsigned char *)(argv[i]+2));
-            }
+        }
 #define USAGE_BUF " [-bSIZE]"
 #else
 #define USAGE_BUF
@@ -209,11 +216,11 @@ void check_args(unsigned int argc, const char *argv[]) {
 #define USAGE_NEXT
 #endif
         else if ('h' == flg) {
-            printf(" .t2esx"USAGE_BUF" [-f] [[-l] -w]"USAGE_NEXT"\n");
+            printf(" .t2esx"USAGE_BUF" [-f] [-w[l]]"USAGE_NEXT"\n");
             exit(0);
         }
     }
-    debugpf("- %u l:%u f:%d w:%d\n", buffer_size, allow_lower, overwrite, wsonly);
+    debugpf("- %u f:%d w:%d\n", buffer_size, overwrite, wsonly);
 }
 #endif // __ESXDOS_DOT_COMMAND
 
@@ -283,7 +290,7 @@ unsigned int main() {
     check_args(argc, argv);
 
     if(wsonly || !(buffer = allocate_above_ramtop(buffer_size))) {
-        buffer = allocate_from_workspace(buffer_size, !allow_lower);
+        buffer = allocate_from_workspace(buffer_size, wsonly&WS_UNCONTENDED_MASK);
     }
     debugpf("buffer @%x\n", buffer);
     #ifdef DEBUG
@@ -294,7 +301,7 @@ unsigned int main() {
         return 1;
     }
 #ifdef T2ESX_BUFFER
-    printf("\x06""B:%u\n", buffer_size);
+    printf("\x06""%u\n", buffer_size);
 #endif // T2ESX_BUFFER
 #endif // __ESXDOS_DOT_COMMAND
 #if defined(T2ESX_NEXT) || defined(T2ESX_CPUFREQ)
