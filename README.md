@@ -111,18 +111,28 @@ Troubleshooting:
 it already exists. Dot command does not overwrite files by default, and
 it accepts “`-f`” command line argument, which allows it to
 unconditionally save target file, overwriting any existing data. Dot
-command should be able to allocate buffer, however in some
-configurations it may not be possible. If you get `M RAMTOP no good
+command should be able to allocate buffer automatically. However, in
+some configurations it may not be possible. If you get `M RAMTOP no good
 (NNNNN)`, please do `CLEAR NNNNN` (recommended value for `NNNNN` is
-`45055`). You may force dot command to use BASIC WORKSPACE only, supply
-"`-w`" command line argument. NOTE: unless "`-l`" argument was used,
-code expects buffer in the uncontended memory, so WORKSPACE should have
-at least 16384+80 bytes above 0x8000. If you absolutely sure the buffer
-can be placed in the lower/contended RAM, use "`-l`" flag. Buffer size
-can be adjusted with "`-bNNNN`" argument. Buffer size cannot be smaller
-than 1024 bytes and greater than 16384 bytes. Normally you do not need
-to use `-l`/`-w`/`-b` flags, unless you need to preserve existing BASIC
-code and machine code/whatever you have above RAMTOP.
+`45055`). You may force dot command to use BASIC WORKSPACE only by
+supplying "`-w`" command line argument. NOTE: unless "`-wl`" argument
+used, code expects buffer to be in the uncontended memory, so WORKSPACE
+should have at least 16384+80 bytes above 0x8000. If you are absolutely
+sure the buffer can be placed in the lower/contended RAM, use "`-wl`"
+flag. Buffer size can be adjusted with "`-bNNNN`" argument.  Buffer size
+cannot be smaller than 1024 bytes and greater than 16384 bytes. Normally
+you do not need to use `-w`/`-wl`/`-b` flags, unless you need to
+preserve existing BASIC code and machine code or whatever you have above
+RAMTOP since the region allocated from the WORKSPACE if guaranteed to
+reside in the completely unused memory region.
+
+> Unsupported/invalid flags are silently ignored, "`-h`" displays quick
+> summary as shown below.
+
+```
+t2esx v2.x BulkTX (C)23,24 TIsland
+ .t2esx [-bSIZE] [-f] [-w[l]] [-t[0-3]]
+```
 
 "Turbo" builds (the ones for the classic hardware) will detect
 overlocked CPUs and report it as
@@ -131,8 +141,7 @@ overlocked CPUs and report it as
 W: flaky 2x     CPU @XMHz
 ```
 
-
-NOTE: Next ZXOS emulation layer does not allow overwriting currently
+NOTE: Next ZXOS esxdos API layer does not allow overwriting currently
 running dot command (error #8). On the Next you cannot do `.cd /dot`
 `.t2esx -f` to self-update, you have to load the new version somewhere
 else and later move it under `/dot`.
@@ -206,7 +215,7 @@ And do not forget to do `LOAD ""` on Speccy :)
 
 You will see something like
 ```
-t2esx v2.0 BulkTX (C)23,24 TIsland
+t2esx v2.x BulkTX (C)23,24 TIsland
 'T2ESX' - 1 chunks
 1
 'T2ESX' DONE
@@ -246,7 +255,7 @@ And on your host just play `T2ESX.xchtap`
 Dot command may display the following message:
 
 ```
-t2esx v2.0 BulkTX (C)23,24 TIsland
+t2esx v2.x BulkTX (C)23,24 TIsland
 M RAMTOP no good (45055)
 ```
 
