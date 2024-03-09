@@ -179,8 +179,6 @@ void check_args(unsigned int argc, const char *argv[]) {
         flg = argv[i][1];
         if ('f' == flg)
             overwrite = 1;
-        else if ('m' == flg)
-            printf(" @WS:%u\n", free_spaces());
         else if ('w' == flg) {
             wsonly = 0x11; // bits 5+1, require unconteded RAM + WS only
             if (al > 2 && 'l' == argv[i][2]) {
@@ -196,6 +194,9 @@ void check_args(unsigned int argc, const char *argv[]) {
                     buffer_size = DEFAULT_BUFFER_SIZE;
                     printf("E: %s\n", argv[i]);
                 }
+            } else {
+                buffer_size = free_spaces() & 0xff00;
+                wsonly = 0x01;
             }
         }
 #define USAGE_BUF " [-bSIZE]"
