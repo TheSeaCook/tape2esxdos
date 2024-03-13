@@ -28,6 +28,29 @@ it is advised to increase the CPU clock frequency instead (e.g. Next
 can load "tapes" at 8x speed when using 28Mhz). It should be easy to
 spot fast loader enabled version, it shows `tM.N` instead of `vM.N`.
 
+### Web Front End
+
+A [web front end](https://tape2esxdos.sourceforge.io/t2esx/) is
+available, enabling true "zero setup" data transfers. Options match
+`split.py` command line parameters. If you do not trust our web service,
+it should be possible to deploy all files locally even on the local
+filesystem. A proper web server sending CORS headers is required to
+enable WebWorker, though.
+
+NOTE: you HAVE to copy compiled t2esx-zx0.tap into the `web`
+directory to ensure that "Prepend T2ESX" options is working as intended
+if you plan on using web frontend locally. It fails silently if
+t2esx-zx0.tap is missing.
+
+> Two (out of three) authors use multiple audio output devices, thus we
+> have a rather complicated logic for setting up output channel.
+> Most of the users will never experience any of these issues.
+
+Web version has a weird edge case. Dealing with multiple audio devices
+is quite problematic due to the browser's security policy. On Chrome
+based browsers we have to request "microphone" permission. No audio is
+recorded. Again, when in doubt just run everything locally.
+
 ### Preparing data file
 
 Utility uses non-standard tape block identifiers, so data for transfer
@@ -145,6 +168,26 @@ NOTE: Next ZXOS esxdos API layer does not allow overwriting currently
 running dot command (error #8). On the Next you cannot do `.cd /dot`
 `.t2esx -f` to self-update, you have to load the new version somewhere
 else and later move it under `/dot`.
+
+Brief summary of all esxdos dot command arguments:
+```
+-h      - short usage summary
+
+-f      - always overwrite target file (never is the default)
+-w      - allocate buffer in WORKSPACE only, uncontended RAM only
+-wl     - allocate buffer in WORKSPACE, allow contended RAM
+-bSIZE  - buffer size (1024..16384)
+          allocated buffer size reported in the second line
+```
+NextZXOS only:
+```
+-t[0-3] - set CPU frequency
+          when not specified -- use whatever is configured,
+          currently selected CPU frequency is reported in the
+          third line
+          '-t' only means "use 3.5MGHz"
+          0/1/2/3 means "3.5/7/14/28 Mhz"s
+```
 
 ### Build Variants
 
