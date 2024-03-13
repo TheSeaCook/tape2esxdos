@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 32 32"
+   version="1.1"
+   id="svg2"
+   width="32"
+   height="32"
+   sodipodi:docname="favicon.svg"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="26.65625"
+     inkscape:cx="15.981243"
+     inkscape:cy="16"
+     inkscape:window-width="1920"
+     inkscape:window-height="1053"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <style
+     id="style1">
+path { fill: grey; }
+@media (prefers-color-scheme: dark) {
+    path { fill: white; }
+}
+</style>
+  <g
+     fill="#808080"
+     id="g2"
+     transform="matrix(2,0,0,2,-8.6551565e-4,-2.0482076)">
+    <path
+       d="M 3.994,3 C 2.736,3.015 1.815,2.97 1.063,3.385 A 1.88,1.88 0 0 0 0.225,4.383 C 0.06,4.822 0,5.343 0,6 v 5 c 0,0.658 0.06,1.179 0.225,1.617 0.164,0.439 0.461,0.79 0.838,0.998 0.752,0.416 1.673,0.37 2.931,0.385 h 8.012 c 1.258,-0.014 2.179,0.03 2.932,-0.385 a 1.88,1.88 0 0 0 0.838,-0.998 C 15.94,12.179 16,11.657 16,11 V 6 C 16,5.342 15.94,4.822 15.775,4.383 A 1.88,1.88 0 0 0 14.938,3.385 C 14.185,2.969 13.264,3.015 12.006,3 H 3.998 Z M 4,4 h 8 c 1.259,0.015 2.087,0.06 2.453,0.262 0.184,0.101 0.29,0.213 0.387,0.472 C 14.937,4.994 15,5.408 15,6 v 5 c 0,0.592 -0.063,1.006 -0.16,1.266 -0.098,0.26 -0.203,0.371 -0.387,0.472 C 14.087,12.94 13.259,12.985 12,13 H 4 C 2.742,12.985 1.91,12.94 1.545,12.738 1.362,12.638 1.258,12.526 1.16,12.266 1.063,12.006 1,11.592 1,11 V 6 C 1,5.408 1.063,4.994 1.16,4.734 1.258,4.474 1.362,4.363 1.545,4.262 1.91,4.06 2.74,4.015 4,4 Z"
+       font-family="sans-serif"
+       font-weight="400"
+       overflow="visible"
+       style="font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000000;text-transform:none;text-orientation:mixed;shape-padding:0;isolation:auto;mix-blend-mode:normal"
+       white-space="normal"
+       id="path1" />
+    <path
+       d="M 4.5,6 C 5.875,6 7,7.125 7,8.5 7,9.065 6.788,9.58 6.469,10 H 9.53 C 9.212,9.58 9,9.065 9,8.5 9,7.125 10.125,6 11.5,6 12.875,6 14,7.125 14,8.5 14,9.875 12.875,11 11.5,11 h -7 A 2.508,2.508 0 0 1 2,8.5 C 2,7.125 3.125,6 4.5,6 Z m 0,1 C 3.666,7 3,7.666 3,8.5 3,9.334 3.666,10 4.5,10 5.334,10 6,9.334 6,8.5 6,7.666 5.334,7 4.5,7 Z m 7,0 C 10.666,7 10,7.666 10,8.5 10,9.334 10.666,10 11.5,10 12.334,10 13,9.334 13,8.5 13,7.666 12.334,7 11.5,7 Z"
+       id="path2" />
+  </g>
+  <g
+     id="g2-7"
+     transform="matrix(0.06166916,0,0,0.02871486,-54.88973,20.269853)">
+    <g
+       id="Rectangle_8">
+      <g
+         id="g11">
+        <polygon
+           class="st2"
+           points="1294.21,225.98 1237.28,345 1353.07,345 1410,225.98 "
+           id="polygon10"
+           style="fill:#00ffff" />
+      </g>
+    </g>
+    <g
+       id="Rectangle_8_copy">
+      <g
+         id="g12">
+        <polygon
+           class="st3"
+           points="1178.47,225.98 1121.54,345 1237.33,345 1294.26,225.98 "
+           id="polygon11"
+           style="fill:#00ff00" />
+      </g>
+    </g>
+    <g
+       id="Rectangle_8_copy_2">
+      <g
+         id="g13">
+        <polygon
+           class="st4"
+           points="1062.68,225.98 1005.75,345 1121.54,345 1178.47,225.98 "
+           id="polygon12"
+           style="fill:#ffff00" />
+      </g>
+    </g>
+    <g
+       id="Rectangle_8_copy_3">
+      <g
+         id="g14">
+        <polygon
+           class="st5"
+           points="947.94,225.98 891.01,345 1006.8,345 1063.73,225.98 "
+           id="polygon13"
+           style="fill:#ff0000" />
+      </g>
+    </g>
+  </g>
+</svg>

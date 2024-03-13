@@ -1,0 +1,113 @@
+* {
+    font-family: sans-serif;
+}
+p {
+  margin-top: 0;
+}
+.grid {
+    display: block;
+}
+.grid > * {
+    padding: 1rem;
+}
+@media (min-width:768px) {
+    .grid {
+        display: grid;
+        grid-auto-rows: 1fr;
+        grid-template-columns: 3fr 1fr 1fr;
+    }
+}
+#drop-area {
+  border: 0.2em dashed #ccc;
+  border-radius: 1em;
+  width: 60%;
+  font-family: sans-serif;
+  margin: 2em auto;
+  padding: 1em;
+}
+#drop-area.highlight {
+  border-color: green;
+  background: #eee;
+}
+.t2esx-form {
+  margin-bottom: 0.5em;
+}
+.button {
+  display: inline-block;
+  padding: 0.5em;
+  background: #ccc;
+  cursor: pointer;
+  border-radius: 0.2em;
+  border: 1px solid #ccc;
+}
+.button:hover {
+  background: #ddd;
+}
+#files {
+  display: none;
+}
+
+progress[value] {
+  --color: red;
+  --background: linear-gradient(to right,
+     rgba(0, 255, 0, 0.4) var(--buffered-width),
+     rgba(255, 255, 0, 0.2) var(--buffered-width) 100%
+    );
+
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: 1px solid grey;
+  border-radius: 0.2em;
+  background: var(--background);
+}
+progress[value]::-webkit-progress-bar {
+  border-radius: 0.2em;
+  background: var(--background);
+}
+progress[value]::-webkit-progress-value {
+  border-radius: 0.2em;
+  background: var(--color);
+}
+progress[value]::-moz-progress-bar {
+  border-radius: 0.2em;
+  background: var(--color);
+}
+
+.tooltip-text {
+  position: absolute;
+  top: -4em;
+  left: 25%;
+  z-index: 2;
+  color: white;
+  width: 16em;
+  background-color: #192733;
+  border-radius: 1em;
+  padding: 1em 1.5em 1em 1em;
+}
+#fade {
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+#delay {
+  opacity: 0;
+  transition: opacity 0.2s;
+  transition-delay: 1s;
+}
+.hover-text:hover #fade { opacity: 1; }
+.hover-text:hover #delay { opacity: 1; }
+
+.hover-text {
+  position: relative;
+  display: inline-block;
+  text-align: center;
+}
+
+/* https://codepen.io/sosuke/pen/Pjoqqp | https://stackoverflow.com/a/43960991/604861 */
+.tape:hover, .tape:focus {
+    filter: invert(53%) sepia(93%) saturate(2214%) hue-rotate(82deg) brightness(118%) contrast(121%);
+}
+.wav:hover, .wav:focus {
+    filter: invert(53%) sepia(93%) saturate(2214%) hue-rotate(82deg) brightness(118%) contrast(121%);
+}
+/* EOF */
