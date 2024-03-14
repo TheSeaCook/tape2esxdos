@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!--
+// Copyright 2024 TIsland Crew
+// SPDX-License-Identifier: Apache-2.0
+ -->
+    <!-- remember Cross-Origin-Opener-Policy: same-origin
+              and Cross-Origin-Embedder-Policy: require-corp -->
+    <link rel="icon" href="favicon.svg" sizes="any" type="image/svg+xml" />
+    <link rel="stylesheet" href="dnd.css" />
+    <title>tape2esxdos web x.0 converter</title>
+    <script type="text/javascript" src="dnd.js"></script>
+</head>
+<body>
+    <h1>tape2esxdos web x.0 converter</h1>
+    <details id="syslog"><summary>Syslog:</summary></details>
+    <div style="padding: 1em">
+    <span class="hover-text">
+        &#x1F50A;&nbsp;
+        <span class="tooltip-text" id="fade">You only need it if you have more than one audio output.</span>
+    </span>
+    <select id="audio-sink">
+        <option value="defult">Audio: Default</option>
+    </select>
+
+    <span id="audio-player" style="position: absolute; right: 3em">
+    <button id="playback-prev" disabled style="width: 3em;">&#9646;&#9664;</button>
+    <button id="playback-stop" disabled style="width: 3em;">&#9632;</button>
+    <button id="playback-next" disabled style="width: 3em;">&#9654;&#9646;</button>
+    <label id="progress-label" for="progress-bar">&nbsp;/&nbsp;</label>
+    <progress id="progress-bar" max=100 value=0></progress>
+    </span>
+    </div>
+    <div>
+        <details id="help-mic">
+            <summary>"Microphone" permission</summary>
+        If your browser does not support selectAudioOutput() code must query all audio
+        devices. That action requires "microphone" permission. Microphone is not going
+        to be used, code only needs it for getting the full list of audio devices.
+        </details>
+</div>
+    <div id="t2esx-options" style="padding: 1em">
+        Chunk size
+        <select id="t2esx-block">
+            <option value="16384">16384</option>
+            <option value="8192">8192</option>
+            <option value="4096">4096</option>
+            <option value="2048">2048</option>
+        </select>
+        |
+        Prepend T2ESX
+        <input type="checkbox" id="t2esx-bundle" checked="true"/>
+        |
+        First chunk delay (NextZXOS)
+        <input type="checkbox" id="t2esx-delay"/>
+        |
+        Pause between chunks
+        <select id="t2esx-pause">
+            <option value="0">None</option>
+            <option value="1" selected="true">1</option>
+            <option value="2">2</option>
+            <option value="4">4</option>
+        </select>
+        |
+        <label for="t2esx-speed">Playback Speed:</label><select id="t2esx-speed">
+            <option value="1">1x (3.5MHz)</option>
+            <option value="2">2x (7MHz)</option>
+            <option value="4">4x (14MHz)</option>
+            <option value="8">8x (28MHz)</option>
+        </select>
+        </div>
+    <p id="warn-high-speed">Note: browser audio is quite weird. E.g. at 8x speed 16k blocks
+        may not work reliably SOMETIMES. Lower speed and reduce the block size when
+        getting TX/RX errors.</p>
+    
+    <div id="links" class="grid">
+        <template id="links-row">
+            <!-- https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template -->
+            <div>&nbsp;<br/><b></b></div>
+            <div>&nbsp;<br/><a href="javascript:void(0)" class="tape tap"><img width="32" height="32" src="img/tape.svg" style="vertical-align: middle;" title="TAP"/> TAP</a>
+                <!-- class[0] - action type, class[1] - tape type -->
+                | <a href="javascript:void(0)" class="wav tap"><img width="32" height="32" src="img/wave.svg" style="vertical-align: middle;" title="Play TAP"/></a></div>
+            <div>TURBO only!<br/><a href="javascript:void(0)" class="tape tzx"><img width="32" height="32" src="img/tape.svg" style="vertical-align: middle;" title="TZX"/> TZX</a>
+                | <a href="javascript:void(0)" class="wav tzx"><img width="32" height="32" src="img/wave.svg" style="vertical-align: middle;" title="Play TZX"/></a></div>
+        </template>
+    </div>
+
+    <div id="drop-area">
+        <form class="t2esx-form" id="files-dnd">
+          <p>Convert one or more files using the file dialog or by dragging and dropping files</p>
+          <input type="file" id="files" multiple>
+          <label class="button" for="files">Select some files</label>
+        </form>
+    </div>
+
+    <div id="console">
+
+    </div>
+    <div style="position: fixed; background: lightgrey; top:0; right:0; padding: 0.3em;">
+        Download
+        <a href="https://codeberg.org/TIsland/tape2esxdos/releases/latest" target="_blank" rel="noopener noreferrer">Speccy T2ESX</a>
+        client
+    </div>
+    <!-- <img src="img/logo.svg" style="position: fixed; bottom: 0px; right: 0px;"/> -->
+    <span style="position: fixed; bottom: 0px; left: 1em;">vx.0.5</span>
+    <a id="clear-storage" href="javascript:void(0)" style="position: fixed; bottom: 0px; right: 1em;">reset settings</a>
+</body>
+</html>

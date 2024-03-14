@@ -3,7 +3,7 @@
 
 # build tape turbo loader by passing T2ESX_TURBO=1 argument to make
 
-CFLAGS = -SO3 --opt-code-size
+CFLAGS = -O3 --opt-code-size
 LDFLAGS = -startup=30 -clib=new
 ifdef DEBUG
 OPTS +=-debug -DDEBUG -Ca-DDEBUG
@@ -35,7 +35,7 @@ tape2esx_CODE.bin: src/tape2esxdos.c $(TURBO_SOURCES) $(UTIL_SOURCES)
 	zcc +zx -vn $(CFLAGS) $(LDFLAGS) $(OPTS) $^ -o tape2esx 
 
 code.tap: tape2esx_CODE.bin
-	bin2tap -c $^ $@ t2esx 32768
+	z88dk-appmake +zx --noloader -b $^ --org 32768 --blockname t2esx -o $@
 
 t2esx.tap: loader.tap code.tap
 	cat $^ > $@
@@ -44,13 +44,13 @@ t2esx-zx0.tap: loader-zx0.tap code-zx0.tap
 	cat $^ > $@
 
 unpack.bin: src/pk/unpack.asm
-	sjasmplus $^
+	zcc +z80 -vn --startup=0 --no-crt -no-stdlib $^ -o $@
 
 code-zx0.bin: unpack.bin tape2esx_CODE.bin.zx0
 	cat $^ > $@
 
 code-zx0.tap: code-zx0.bin
-	bin2tap -c $^ $@ t2esx-zx0 45056
+	z88dk-appmake +zx --noloader -b $^ --org 45056 --blockname t2esx-zx0 -o $@
 
 tape2esx_CODE.bin.zx0: tape2esx_CODE.bin
 	zx0 -f $^

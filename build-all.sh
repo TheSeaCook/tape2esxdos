@@ -1,11 +1,22 @@
 #!/bin/bash
 
+# Copyright 2023,24 TIsland Crew
+# SPDX-License-Identifier: Apache-2.0
+
 if ! type zcc 2>/dev/null; then
     echo "ERROR: no z88dk in PATH"
     exit 99
 fi
 
 set -e
+
+# unit test needs something to be pre-built
+make clean all
+export PYTHONDONTWRITEBYTECODE=1
+if ! python3 -m unittest >/dev/null 2>&1; then
+    echo "ERROR: Python unit tests FAILED!"
+    exit 88
+fi
 
 DIST=dist
 ZIP=t2esx.zip

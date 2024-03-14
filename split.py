@@ -4,77 +4,224 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
+from abc import ABC, abstractmethod
 from os import get_terminal_size
 from os.path import getsize, exists
 from pathlib import Path
+from shutil import copyfileobj
 from struct import pack, unpack
-from sys import argv
+from sys import argv, stdout
 
 MAX_BLOCK_SIZE=16384
 
 BTX_OPEN_ID=0x87
 BTX_CHUNK_ID=0x88
 
-# TODO: rewrite it as a class, too messy today
-turbo = False   # FIXME:
-bundle = False  # FIXME:
-
 #read file in BLOCK_SIZE chunks, write to TAP with
 #  ID 0x88, vars -- total number of chunks, hdadd -- current chunk number
 #  chunk with ID 0x87 means 'open file but ignore the data', required for
 #  slow esxdos where opening file takes long time
 
-def split(name, delay=False, block_size=(MAX_BLOCK_SIZE/2), pause=0, split=False):
+class ChunkWriter(ABC):
+  def __init__(self, name, count, pause=False, delay=False, loader=False, split=False):
+    self._name = name
+    self._count = count
+    self._pause = pause
+    self._delay = delay
+    self._loader = loader
+    self._split = split
+    # internal state
+    self._tapname = mkdosname(name).ljust(10).encode('ASCII')
+    self._ordinal = 1
+    self._suffix = '.xchtap'
+
+  def fragment_id(self):
+    return str(self._ordinal).zfill(4) if self._split else ''
+
+  def filename(self):
+    return self._name + self._suffix + self.fragment_id()
+
+  def __enter__(self):
+    return self.open()
+
+  def __exit__(self, *args):
+    self.close()
+
+  def open(self):
+    if not self._split:
+      self._handle = open(self.filename(), 'wb')
+    return self
+
+  def close(self):
+    if None != self._handle:
+      self._handle.close()
+      self._hanle = None
+
+  def _need_tape_header(self):
+    return self._split or 1 == self._ordinal
+
+  def _need_pause(self):
+    return self._pause > 0 and self._ordinal < self._count and not self._split
+
+  def write(self, chunk):
+    if self._split:
+      self._write_fragment(chunk)
+    else:
+      self._add_chunk(chunk)
+
+  def _write_fragment(self, chunk):
+    with open(self.filename(), 'wb') as tap:
+      self._handle = tap
+      self._add_chunk(chunk)
+      self._handle = None
+
+  def _add_chunk(self, chunk):
+    if self._need_tape_header():
+      self._write_tape_header()
+    self._write_tape_block(BTX_CHUNK_ID, chunk)
+    if self._need_pause():
+      self._write_tape_block_data(0x99, bytearray([0x55] * self._pause * 256))
+    self._ordinal += 1
+
+  def _write_tape_header(self):
+    if 1 == self._ordinal:
+      if self._loader:
+        self._write_loader("t2esx-zx0.tap", "t2esx.tap")
+      if self._delay:
+        self._write_tape_block(BTX_OPEN_ID, bytearray([0x77]))
+
+  def _write_tape_block(self, type_id, chunk):
+    self._write_tape_block_header(type_id, len(chunk))
+    self._write_tape_block_data(type_id, chunk)
+
+  def _write_loader(self, *loaders):
+    for loader in loaders:
+      if exists(loader) and getsize(loader)>0:
+        print("Adding", loader, "to the bundle")
+        self._append_tap(loader)
+        return
+    print("ERROR: None of the loaders found", loaders)
+
+  @abstractmethod
+  def _write_tape_block_header(self, type_id, size):
+    pass
+
+  @abstractmethod
+  def _write_tape_block_data(self, type_id, data):
+    # type_id is normally unused here
+    pass
+
+
+class TapWriter(ChunkWriter):
+
+  def _write_tap_block_prologue(self, block_size):
+    self._handle.write(pack('<H', block_size))
+
+  def _write_tape_block_header(self, type_id, size):
+    hdr = bytearray(19)
+    hdr[0] = 0 # flag byte 00 (header)
+    hdr[1] = type_id
+    hdr[2:12] = pack('<10s', self._tapname)
+    hdr[12:14] = pack('<H', size)
+    hdr[14:16] = pack('<H', self._ordinal) # param1 - this block ordinal
+    hdr[16:18] = pack('<H', self._count) # param2 - total # of blocks
+    hdr[18] = 0 # note that [18] must be 0!!! or checksum will be wrong
+    hdr[18] = chksum(hdr) # note that [18] must be 0!!!
+    self._write_tap_block_prologue(len(hdr))
+    self._handle.write(hdr)
+
+  def _write_tape_block_data(self, type_id, data):
+    self._write_tap_block_prologue(len(data)+2)
+    self._handle.write(b'\xff')
+    self._handle.write(data)
+    self._handle.write(pack('<B', chksum([0xff], data)))
+
+  def _append_tap(self, loader):
+    with open(loader, 'rb') as l:
+      copyfileobj(l, self._handle, MAX_BLOCK_SIZE)
+
+
+class TzxWriter(TapWriter):
+  def __init__(self, *args):
+    super().__init__(*args)
+    self._suffix = '.xchtzx'
+
+  def _append_tap(self, loader):
+    tap2tzx(loader, self._handle)
+
+  def _write_tape_header(self):
+    tzx = bytearray(11)
+    tzx[0:8] = pack('<7s', 'ZXTape!'.encode('ASCII'))
+    tzx[7] = 0x1a
+    tzx[8] = 0x01
+    tzx[9] = 0x14
+    self._handle.write(tzx)
+    super()._write_tape_header()
+
+  def _write_tap_block_prologue(self, size):
+    bh = bytearray(18)
+    bh[0:2] = pack('<H', 1408) # PILOT
+    bh[2:4] = pack('<H', 397) # SYNC 1st
+    bh[4:6] = pack('<H', 317) # SYNC 2nd
+    bh[6:8] = pack('<H', 325) # ZERO
+    bh[8:10] = pack('<H', 649) # ONE
+    bh[10:12] = pack('<H', 4835) # PILOT len
+    bh[12:13] = pack('<B', 8) # last byte used bits
+    bh[13:15] = pack('<H', 318) # pause after
+    bh[15:17] = pack('<H', size) # data length
+    bh[17] = 0 # our length fits 2 bytes
+    self._handle.write(b'\x11')
+    self._handle.write(bh)
+
+
+def split(name, args):
   if not exists(name):
     print("Not a file, skipping:", name)
-    return
+    return None
   filesize=getsize(name)
-  if None == block_size:
+  if None == args.block_size:
     block_size = MAX_BLOCK_SIZE//2 if filesize < 49152 else MAX_BLOCK_SIZE
+  else:
+    block_size = args.block_size
   nchunks=filesize//block_size
   if (filesize%block_size) > 0: nchunks += 1
   dosname = mkdosname(name)
   print('{} size {}, {} chunk{} "{}"'
       .format(name, filesize, nchunks, 's' if nchunks > 1 else '', dosname))
-  if turbo: ftyp = '.xchtzx'
-  else: ftyp = '.xchtap'
+
+  if args.turbo:
+    writer = TzxWriter
+  else:
+    writer = TapWriter
+
+  filename = None
   with open(name, 'rb') as f:
-    ordinal = 1
-    print("Output:", name+ftyp)
-    if split:
+    with writer(name, nchunks, args.pause, not args.no_delay, args.bundle, args.split) as tape:
+      filename = tape.filename()
+      print("Output:", filename)
       while True:
         data = f.read(block_size)
-        if data:
-          oname = name+ftyp+'.'+str(ordinal).zfill(4)
-          with open(oname, 'wb') as tap:
-            packchunk(tap, dosname, ordinal, nchunks, data, delay)
-            ordinal += 1
-        else:
-          break
-    else:
-      with open(name+ftyp, 'wb') as tap:
-        if turbo: tzx_start(tap)
-        elif bundle: tape_add_loader(tap, "t2esx-zx0.tap", "t2esx.tap")
-        data = f.read(block_size)
-        while data:
-          packchunk(tap, dosname, ordinal, nchunks, data, delay)
-          if pause > 0 and ordinal < nchunks:
-            tape_data(tap, bytearray([0x55] * pause * 256))
-          ordinal += 1
-          data = f.read(block_size)
-    print('Done with {}'.format(name).ljust(get_tty_width()))
+        if not data: break
+        tape.write(data)
+        print('.', end='', flush=True)
+
+  print('\rDone with {}'.format(name).ljust(get_tty_width()))
+  return filename
 
 def get_tty_width():
-  columns = get_terminal_size().columns
-  if None == columns or columns < 32:
-    columns = 32
+  if stdout.isatty():
+    columns = get_terminal_size().columns
+    if None == columns or columns < 32:
+      columns = 32
+  else:
+    columns = 80
   return columns
 
 def mkdosname(fname):
   # dos name is 8+3, but we only have 10 chars
   p = Path(fname)
   suffix = p.suffix[0:4]
-  stem = p.stem.translate({ord('.'):None})
+  stem = p.stem.translate({ord('.'):None, ord(' '):None})
   if len(suffix) > 0:
     return stem[0:10-len(suffix)]+suffix
   else:
@@ -86,89 +233,20 @@ def chksum(*args):
     for b in data: chksum ^= b
   return chksum
 
-def packchunk(t, dosname, ordinal, total, data, delay=False):
-    name = dosname.ljust(10).encode('ASCII')
-    # do we need OPEN_FILE chunk?
-    if 1 == ordinal and delay:
-      tape_header(t, BTX_OPEN_ID, name, len(data), ordinal, total)
-      tape_data(t, bytearray([0x77]))
-    # header
-    tape_header(t, BTX_CHUNK_ID, name, len(data), ordinal, total)
-    # data
-    tape_data(t, data)
-    print('Written chunk {} size {}\r'.format(ordinal, len(data))[:get_tty_width()-1], end='')
-
-def tzx_start(t):
-  tzx = bytearray(11)
-  tzx[0:8] = pack('<7s', 'ZXTape!'.encode('ASCII'))
-  tzx[7] = 0x1a
-  tzx[8] = 0x01
-  tzx[9] = 0x14
-  t.write(tzx)
-
-def tzx_turbo_speed_header_mcleod(t, size): # mcload timings
-  bh = bytearray(18)
-  bh[0:2] = pack('<H', 1500) # PILOT
-  bh[2:4] = pack('<H', 400) # SYNC 1st
-  bh[4:6] = pack('<H', 800) # SYNC 2nd
-  bh[6:8] = pack('<H', 500) # ZERO
-  bh[8:10] = pack('<H', 1000) # ONE
-  bh[10:12] = pack('<H', 600) # PILOT len
-  bh[12:13] = pack('<B', 8) # last byte used bits
-  bh[13:15] = pack('<H', 1000 ) # pause after
-  bh[15:17] = pack('<H', size) # data length
-  bh[17] = 0 # our length fits 2 bytes
-  t.write(b'\x11')
-  t.write(bh)
-
-
-def tzx_turbo_speed_header(t, size):
-  bh = bytearray(18)
-  bh[0:2] = pack('<H', 1408) # PILOT
-  bh[2:4] = pack('<H', 397) # SYNC 1st
-  bh[4:6] = pack('<H', 317) # SYNC 2nd
-  bh[6:8] = pack('<H', 325) # ZERO
-  bh[8:10] = pack('<H', 649) # ONE
-  bh[10:12] = pack('<H', 4835) # PILOT len
-  bh[12:13] = pack('<B', 8) # last byte used bits
-  bh[13:15] = pack('<H', 318) # pause after
-  bh[15:17] = pack('<H', size) # data length
-  bh[17] = 0 # our length fits 2 bytes
-  t.write(b'\x11')
-  t.write(bh)
-
-def tape_header(t, type_id, name, size, ordinal, total):
-  hdr = bytearray(19)
-  # hdr[0] = 0, flag byte 00 (header)
-  hdr[1] = type_id
-  hdr[2:12] = pack('<10s', name)
-  hdr[12:14] = pack('<H', size)
-  hdr[14:16] = pack('<H', ordinal) # param1 - this block ordinal
-  hdr[16:18] = pack('<H', total) # param2 - total # of blocks
-  hdr[18] = chksum(hdr) # note that [18] must be 0!!!
-  if turbo:
-    tzx_turbo_speed_header(t, len(hdr))
-  else:
-    t.write(pack('<H', len(hdr)))
-  t.write(hdr)
-
-def tape_data(t, data):
-  if turbo:
-    tzx_turbo_speed_header(t, len(data)+2)
-  else:
-    t.write(pack('<H', len(data)+2))
-  t.write(b'\xff')
-  t.write(data)
-  t.write(pack('<B', chksum([0xff], data)))
-
-def tape_add_loader(t, *loaders):
-  for loader in loaders:
-    if exists(loader) and getsize(loader)>0:
-      print("Adding", loader, "to the bundle")
-      with open(loader, 'rb') as l:
-        t.write(l.read()) # FIXME: fixed length buffer?
-      return
-  print("ERROR: None of the loaders found", loaders)
+def tap2tzx(name, write_handle): # convert TAP into TZX
+  # NOTE: no TZX header added, only blocks are converted!
+  with open(name, 'rb') as tap:
+    while True:
+      lenbts = tap.read(2)
+      if not lenbts: break
+      size = unpack('<H', lenbts)[0]
+      block = tap.read(size)
+      if not block or len(block) != size:
+        raise Error('Cannot read {} bytes from {}'.format(size, name))
+      write_handle.write(b'\x10') # ID 10 - Standard Speed Data Block
+      write_handle.write(pack('<H', 1000)) # Pause after this block (ms.)
+      write_handle.write(pack('<H', size)) # Length of data that follow
+      write_handle.write(block) # Data as in .TAP files
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -193,15 +271,9 @@ if __name__ == '__main__':
     raise TypeError('Block size cannot be larger than {}'.format(MAX_BLOCK_SIZE))
   if args.split and args.pause > 0:
     print("WARNING: no pause added when splitting output")
-  if args.bundle:
-    if args.split:
-      print("WARNING: no bundles when splitting output")
-    if args.turbo:
-      print("ERROR: turbo budles not supported yet")
-  turbo = args.turbo
-  bundle = args.bundle
+    args.pause = 0
 
   for name in args.files:
-    split(name, not args.no_delay, args.block_size, args.pause, args.split)
+    split(name, args)
 
 # EOF vim: ts=2:sw=2:et:ai:
