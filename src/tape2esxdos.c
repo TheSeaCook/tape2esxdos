@@ -60,7 +60,7 @@
 #endif // T2ESX_TURBO / T2ESX_CPUFREQ
 
 // 4 chars only for the version tag
-#define VER VTAG"2.B"
+#define VER VTAG"2.C"
 
 #define BTX_ID_MASK 0xF0u
 #define BTX_ID_TYPE 0x80u
