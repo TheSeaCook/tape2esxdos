@@ -10,6 +10,8 @@ fi
 
 set -e
 
+# unit test needs something to be pre-built
+make clean all
 export PYTHONDONTWRITEBYTECODE=1
 if ! python3 -m unittest >/dev/null 2>&1; then
     echo "ERROR: Python unit tests FAILED!"
