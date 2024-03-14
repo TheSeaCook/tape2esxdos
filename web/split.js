@@ -22,7 +22,7 @@ let loaderBuffer;
 fetch(new Request('t2esx-zx0.tap'))
     .then((response) => { 
         if (response.ok) {
-            response.blob();
+            return response.blob();
         } else {
             throw Error('Bad response code ' + response.status);
         }
